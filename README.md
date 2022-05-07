@@ -99,7 +99,7 @@ result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen 
 Circle:inflate(skin_factor)
 ```
 
-### Properties
+#### Properties
 ```lua
 Circle.x -- get/set
 Circle.y -- get/set
@@ -118,7 +118,7 @@ result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [,
 AABB:inflate(skin_factor)
 ```
 
-### Properties
+#### Properties
 ```lua
 AABB.x -- get/set
 AABB.y -- get/set
@@ -140,7 +140,7 @@ result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen
 Capsule:inflate(skin_factor)
 ```
 
-### Properties
+#### Properties
 ```lua
 Capsule.x -- get/set
 Capsule.y -- get/set
@@ -169,7 +169,7 @@ radians = Transform:getRotation()
 Transform:rotate(amount_in_radians)
 ```
 
-### Properties
+#### Properties
 ```lua
 Transform.x -- get/set
 Transform.y -- get/set
