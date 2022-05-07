@@ -563,7 +563,8 @@ static int capsuleIndex(lua_State* L) // __index
     else if (strcmp(key, "height") == 0)
     {
         c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
-        lua_pushnumber(L, capsule->b.y);
+        float h = capsule->b.y - capsule->a.y;
+        lua_pushnumber(L, h);
         return 1;
     }
     else if (strcmp(key, "x") == 0)
@@ -604,17 +605,16 @@ static int capsuleNewIndex(lua_State* L) // __newindex
     else if (strcmp(key, "x") == 0)
     {
         c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
-        float dx = abs(capsule->a.x - value);
         capsule->a.x = value;
-        capsule->b.x = value + dx;
+        capsule->b.x = value;
         return 0;
     }
     else if (strcmp(key, "y") == 0)
     {
         c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
-        float dy = abs(capsule->a.y - value);
+        float h = capsule->b.y - capsule->a.y;
         capsule->a.y = value;
-        capsule->b.y = value + dy;
+        capsule->b.y = value + h;
         return 0;
     }
     
@@ -646,12 +646,11 @@ int setCapsulePosition(lua_State* L)
     c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
     float x = luaL_checknumber(L, 2);
     float y = luaL_checknumber(L, 3);
-    float dx = abs(capsule->a.x - x);
-    float dy = abs(capsule->a.y - y);
+    float h = capsule->b.y - capsule->a.y;
     capsule->a.x = x;
     capsule->a.y = y;
-    capsule->b.x = x + dx;
-    capsule->b.y = y + dy;
+    capsule->b.x = x;
+    capsule->b.y = y + h;
     return 0;
 }
 
@@ -674,7 +673,7 @@ int setCapsuleHeight(lua_State* L)
 int getCapsuleHeight(lua_State* L)
 {
     c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
-    lua_pushnumber(L, capsule->b.y);
+    lua_pushnumber(L, capsule->b.y - capsule->a.y);
     return 1;
 }
 
@@ -1376,9 +1375,9 @@ int loader(lua_State* L)
         {"getHeight", getCapsuleHeight},
         {"setRadius", setCapsuleRadius},
         {"getRadius", getCapsuleRadius},
-        {"rayTest", cirlceRayTest},
-        {"inflate", capsuleRayTest},
-        {"getData", capsuleInflate},
+        {"getData", getCapsuleData},
+        {"rayTest", capsuleRayTest},
+        {"inflate", capsuleInflate},
         {NULL, NULL}
     };
     g_createClass(L, "c2Capsule", NULL, NULL, NULL, capsuleFunctionsList);
