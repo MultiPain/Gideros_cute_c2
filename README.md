@@ -76,7 +76,7 @@ MAINFOLD = CuteC2.capsuleToPolyManifold(capsule, poly)
 MAINFOLD = CuteC2.polyToPolyManifold(poly1, poly2)
 ```
 ### Advanced functions
-Check the source code for more information
+Check the [source code](https://github.com/RandyGaul/cute_headers/blob/df3b63e072afa275a72ce8aa7fce0428a5966e0c/cute_c2.h#L342) for more information
 ```lua
 distance, aX, aY, bX, bY, iterations = CuteC2.GJK(object1, object2 [, transform1, transform2])
 -- hit (number): 1 if shapes were touching at the TOI, 0 if they never hit.
