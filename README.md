@@ -62,6 +62,10 @@ bbol = CuteC2.collided(object1, object2 [, transform1, transform2])
 result, normalX, normalY, t = CuteC2.castRay(ray, object [, transform])
 result, normalX, normalY, t = CuteC2.castRay(rayX1, rayY1, rayX2, rayY2, rayLen, object [, transform])
 
+-- t (number): value from raycast result
+x, y = CuteC2.impact(ray, t)
+x, y = CuteC2.impact(rayX1, rayY1, rayX2, rayY2, rayLen, t)
+
 -- 'MAINFOLD' is 9 values: count, depths1, depths2, contact_point1x, contact_point1y, contact_point2x, contact_point2y, normalX, normalY
 MAINFOLD = CuteC2.collide(object1, object2 [, transform1, transform2])
 MAINFOLD = CuteC2.circleToCircleManifold(circle1, circle2)
@@ -93,10 +97,10 @@ Circle:setPosition(x, y)
 x, y = Circle:getPosition()
 Circle:setRadius(r)
 r = Circle:getRadius()
-Circle:rayTest()
 result, normalX, normalY, t = Circle:rayTest(ray [, transform])
 result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 Circle:inflate(skin_factor)
+bool = Circle:hitTest(x, y)
 ```
 
 #### Properties
@@ -116,6 +120,7 @@ minX, minY, maxX, maxY = AABB:getRect()
 result, normalX, normalY, t = AABB:rayTest(ray [, transform])
 result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 AABB:inflate(skin_factor)
+bool = AABB:hitTest(x, y)
 ```
 
 #### Properties
@@ -134,10 +139,11 @@ Capsule:setHeight(h)
 h = Capsule:getHeight()
 Capsule:setRadius(r)
 r = Capsule:getRadius()
-x, y, w, h, r = Capsule:getData()
+x1, y1, x2, y2, r = Capsule:getData()
 result, normalX, normalY, t = Capsule:rayTest(ray [, transform])
 result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 Capsule:inflate(skin_factor)
+bool = Capsule:hitTest(x, y)
 ```
 
 #### Properties
@@ -157,6 +163,27 @@ table = Poly:getPoints()
 result, normalX, normalY, t = Poly:rayTest(ray [, transform])
 result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 Poly:inflate(skin_factor)
+bool = Poly:hitTest(x, y [, transform])
+```
+
+## Ray
+```lua
+ray:setStartPosition(x, y)
+x, y = Ray:getStartPosition()
+ray:setTargetPosition(x, y)
+x, y = Ray:getTargetPosition()
+Ray:setT(number)
+t = Ray:getT()
+```
+
+#### Properties
+```lua
+Ray.x -- get/set
+Ray.y -- get/set
+Ray.t -- get/set (distance along "direction" from position "x, y" to find endpoint of ray)
+Ray.direction -- get/set (angle in radians)
+Ray.targetX -- get/set
+Ray.targetY -- get/set
 ```
 
 ## Transform
@@ -174,4 +201,20 @@ Transform:rotate(amount_in_radians)
 Transform.x -- get/set
 Transform.y -- get/set
 Transform.rotation -- get/set
+```
+
+
+## Shape types
+```lua
+CuteC2.TYPE_NONE
+CuteC2.TYPE_CIRCLE
+CuteC2.TYPE_AABB
+CuteC2.TYPE_CAPSULE
+CuteC2.TYPE_POLY
+```
+
+Example:
+```lua
+circle = CuteC2.circle(100, 200, 15)
+print(circle.__shapeType == CuteC2.TYPE_CIRCLE) -- true
 ```

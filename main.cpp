@@ -40,7 +40,8 @@
     lua_pushcfunction(L, index, #index); \
     lua_setfield(L, -2, "__index"); \
     lua_pushcfunction(L, newindex, #newindex); \
-    lua_setfield(L, -2, "__newindex"); lua_setmetatable(L, -2);
+    lua_setfield(L, -2, "__newindex"); \
+    lua_setmetatable(L, -2);
 #else
 #define ADD_METAMETHODS(L, index, newindex) (((void)(L))
 #endif
@@ -72,32 +73,16 @@ static void stackDump(lua_State* L, const char* prefix = "")
         lua_getglobal(L, "print");
         switch (t)
         {
-        case LUA_TSTRING:
-        {
-            lua_pushfstring(L, "[S] %d:'%s'", i, lua_tostring(L, i));
-        }
+            case LUA_TSTRING: lua_pushfstring(L, "[S] %d:'%s'", i, lua_tostring(L, i));
+            case LUA_TBOOLEAN: lua_pushfstring(L, "[B] %d: %s", i, lua_toboolean(L, i) ? "true" : "false");
+            case LUA_TNUMBER: lua_pushfstring(L, "[N] %d: %f", i, lua_tonumber(L, i));
+            case LUA_TVECTOR:
+            {
+                const float* vec = lua_tovector(L, i);
+                lua_pushfstring(L, "[V] %d: {%f, %f, %f, %f}", i, vec[0], vec[1], vec[2], vec[3]);
+            }
             break;
-        case LUA_TBOOLEAN:
-        {
-            lua_pushfstring(L, "[B] %d: %s", i, lua_toboolean(L, i) ? "true" : "false");
-        }
-            break;
-        case LUA_TNUMBER:
-        {
-            lua_pushfstring(L, "[N] %d: %f", i, lua_tonumber(L, i));
-        }
-            break;
-        case LUA_TVECTOR:
-        {
-            const float* vec = lua_tovector(L, i);
-            lua_pushfstring(L, "[V] %d: {%f, %f, %f, %f}", i, vec[0], vec[1], vec[2], vec[3]);
-        }
-            break;
-        default:
-        {
-            lua_pushfstring(L, "[D] %d: %s", i, lua_typename(L, t));
-        }
-            break;
+            default: lua_pushfstring(L, "[D] %d: %s", i, lua_typename(L, t));
         }
         i--;
         lua_call(L, 1, 0);
@@ -131,7 +116,7 @@ void* getRawPtr(lua_State* L, int idx)
 
 C2_TYPE getShapeType(lua_State* L, int idx)
 {
-    lua_rawgetfield(L, idx, "_shapeType");
+    lua_rawgetfield(L, idx, "__shapeType");
     C2_TYPE shapeType = (C2_TYPE)lua_tointeger(L, -1);
     lua_pop(L, 1);
     return shapeType;
@@ -155,6 +140,75 @@ void lua_pushmanifold(lua_State* L, c2Manifold m)
 
 c2x checkTransform(lua_State* L, int idx);
 
+void addMetaMethods(lua_State* L, const char* classname, const char* metaname, lua_CFunction index, lua_CFunction newindex)
+{
+    // https://stackoverflow.com/questions/20332518/lua-c-index-is-always-invoked-even-the-tables-field-is-known
+    // Do NOT invoke "__index" and "__newindex" methods on KNOWN fields
+    
+    // Stack:
+    // -1: ojbect
+    // -2: argument_1
+    // ...
+    
+    luaL_getmetatable(L, classname);
+    // -1: mt
+    // -2: ojbect
+    
+    lua_pushvalue(L, -1);
+    // -1: mt
+    // -2: mt
+    // -3: ojbect
+    
+    lua_setfield(L, -2, "__newindex");
+    // -1: mt
+    // -2: ojbect
+    
+    // Small hack to be able to get object instance inside
+    // "__index" & "__newindex" metamethods
+    lua_getfield(L, -2, "__userdata");
+    // -1: userdata
+    // -2: mt
+    // -3: ojbect
+    
+    lua_setfield(L, -2, "__userdata"); // hack
+    // -1: mt
+    // -2: ojbect
+    
+    luaL_newmetatable(L, metaname);
+    // -1: new_mt
+    // -2: mt
+    // -3: object
+    
+    lua_pushcfunction(L, index, "debug_index");
+    // -1: func
+    // -2: new_mt
+    // -3: mt
+    // -4: object
+    
+    lua_setfield(L, -2, "__index");
+    // -1: new_mt
+    // -2: mt
+    // -3: object
+    
+    lua_pushcfunction(L, newindex, "debug_newindex");
+    // -1: func
+    // -2: new_mt
+    // -3: mt
+    // -4: object
+    
+    lua_setfield(L, -2, "__newindex");
+    // -1: new_mt
+    // -2: mt
+    // -3: object
+    
+    lua_setmetatable(L, -2);
+    // -1: mt
+    // -2: object
+    
+    lua_remove(L, -1);
+    // -1: object
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// TEMPLATES
@@ -165,6 +219,15 @@ template<class T>
 inline T* getPtr(lua_State* L, const char* name, int idx = 1)
 {
     return static_cast<T*>(g_getInstance(L, name, idx));
+}
+
+template<class T>
+inline T* getPtrNoCheck(lua_State* L, const char* name, int idx = 1)
+{
+    g_disableTypeChecking();
+    T* obj = static_cast<T*>(g_getInstance(L, name, idx));
+    g_enableTypeChecking();        
+    return obj;
 }
 
 inline void setPtr(lua_State* L, void* ptr)
@@ -241,12 +304,11 @@ void bindEnums(lua_State* L)
 {
     lua_getglobal(L, "CuteC2");
 
-
-    BIND_IENUM(C2_TYPE_NONE, "C2_TYPE_NONE");
-    BIND_IENUM(C2_TYPE_CIRCLE, "C2_TYPE_CIRCLE");
-    BIND_IENUM(C2_TYPE_AABB, "C2_TYPE_AABB");
-    BIND_IENUM(C2_TYPE_CAPSULE, "C2_TYPE_CAPSULE");
-    BIND_IENUM(C2_TYPE_POLY, "C2_TYPE_POLY");
+    BIND_IENUM(C2_TYPE_NONE, "TYPE_NONE");
+    BIND_IENUM(C2_TYPE_CIRCLE, "TYPE_CIRCLE");
+    BIND_IENUM(C2_TYPE_AABB, "TYPE_AABB");
+    BIND_IENUM(C2_TYPE_CAPSULE, "TYPE_CAPSULE");
+    BIND_IENUM(C2_TYPE_POLY, "TYPE_POLY");
 
     lua_pop(L, 1);
 }
@@ -268,7 +330,7 @@ void bindEnums(lua_State* L)
 
 static int cirlceIndex(lua_State* L) // __index
 {
-    const char* key = lua_tostring(L, 2);    
+    const char* key = lua_tostring(L, 2);
     
     if (strcmp(key, "radius") == 0)
     {
@@ -278,13 +340,13 @@ static int cirlceIndex(lua_State* L) // __index
     }
     else if (strcmp(key, "x") == 0)
     {
-        c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
+        c2Circle* circle = getPtrNoCheck<c2Circle>(L, "c2Circle", 1);
         lua_pushnumber(L, circle->p.x);
         return 1;
     }
     else if (strcmp(key, "y") == 0)
     {
-        c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
+        c2Circle* circle = getPtrNoCheck<c2Circle>(L, "c2Circle", 1);
         lua_pushnumber(L, circle->p.y);
         return 1;
     }
@@ -332,7 +394,7 @@ int createCircle(lua_State* L)
     // Store shape directly in table to be able to
     // use global raycast & inflate functions (e.g. CuteC2.raycast(myShape, myRay))
     lua_pushinteger(L, C2_TYPE_CIRCLE);
-    lua_setfield(L, -2, "_shapeType");
+    lua_setfield(L, -2, "__shapeType");
     
     ADD_METAMETHODS("c2Circle", cirlceIndex, cirlceNewIndex);
     setPtr(L, circle);
@@ -360,7 +422,6 @@ int setCircleRadius(lua_State* L)
 {
     c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
     circle->r = luaL_checknumber(L, 2);
-    LUA_PRINTF("C++ SetRadius: %f", circle->r);
     return 0;
 }
 
@@ -368,8 +429,16 @@ int getCircleRadius(lua_State* L)
 {
     c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
     lua_pushnumber(L, circle->r);
-    LUA_PRINTF("C++ GetRadius: %f", circle->r);
     return 1;
+}
+
+int cirlceGetData(lua_State* L)
+{
+    c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
+    lua_pushnumber(L, circle->p.x);
+    lua_pushnumber(L, circle->p.y);
+    lua_pushnumber(L, circle->r);
+    return 3;
 }
 
 int cirlceRayTest(lua_State* L)
@@ -381,6 +450,15 @@ int circleInflate(lua_State* L)
 {
     objInflate<c2Circle>(L, "c2Circle", C2_TYPE_CIRCLE);
     return 0;
+}
+
+int circleHitTest(lua_State* L)
+{
+    c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
+    c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+    int result = c2CircleToPoint(*circle, point);
+    lua_pushboolean(L, result);
+    return 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +551,7 @@ int createAABB(lua_State* L)
     g_pushInstance(L, "c2AABB", aabb);
 
     lua_pushinteger(L, C2_TYPE_AABB);
-    lua_setfield(L, -2, "_shapeType");
+    lua_setfield(L, -2, "__shapeType");
     
     ADD_METAMETHODS("c2AABB", AABBIndex, AABBNewIndex);
     setPtr(L, aabb);
@@ -521,7 +599,7 @@ int getAABBSize(lua_State* L)
     return 2;
 }
 
-int getAABBRect(lua_State* L)
+int getAABBData(lua_State* L)
 {
     c2AABB* aabb = getPtr<c2AABB>(L, "c2AABB", 1);
     lua_pushnumber(L, aabb->min.x);
@@ -540,6 +618,15 @@ int AABBInflate(lua_State* L)
 {
     objInflate<c2AABB>(L, "c2AABB", C2_TYPE_AABB);
     return 0;
+}
+
+int AABBHitTest(lua_State* L)
+{
+    c2AABB* aabb = getPtr<c2AABB>(L, "c2AABB", 1);
+    c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+    int result = c2AABBtoPoint(*aabb, point);
+    lua_pushboolean(L, result);
+    return 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +649,7 @@ static int capsuleIndex(lua_State* L) // __index
     }
     else if (strcmp(key, "height") == 0)
     {
-        c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
+        c2Capsule* capsule = getPtrNoCheck<c2Capsule>(L, "c2Capsule", 1);
         float h = capsule->b.y - capsule->a.y;
         lua_pushnumber(L, h);
         return 1;
@@ -633,7 +720,7 @@ int createCapsule(lua_State* L)
     g_pushInstance(L, "c2Capsule", capsule);
 
     lua_pushinteger(L, C2_TYPE_CAPSULE);
-    lua_setfield(L, -2, "_shapeType");
+    lua_setfield(L, -2, "__shapeType");
     
     ADD_METAMETHODS("c2Capsule", capsuleIndex, capsuleNewIndex);
     setPtr(L, capsule);
@@ -713,6 +800,44 @@ int capsuleInflate(lua_State* L)
     return 0;
 }
 
+int capsuleHitTest(lua_State* L)
+{
+    c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
+    c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+    c2AABB aabb = c2AABB();
+    aabb.min = c2V(capsule->a.x - capsule->r, capsule->a.y);
+    aabb.max = c2V(capsule->a.x + capsule->r, capsule->b.y);
+    
+    if (c2AABBtoPoint(aabb, point))
+    {
+        lua_pushboolean(L, true);
+        return 1;
+    }
+    
+    c2Circle circleA = c2Circle();
+    circleA.p = capsule->a;
+    circleA.r = capsule->r;
+    
+    if (c2CircleToPoint(circleA, point))
+    {
+        lua_pushboolean(L, true);
+        return 1;
+    }
+    
+    c2Circle circleB = c2Circle();
+    circleB.p = capsule->b;
+    circleB.r = capsule->r;
+    
+    if (c2CircleToPoint(circleB, point))
+    {
+        lua_pushboolean(L, true);
+        return 1;
+    }
+    
+    lua_pushboolean(L, false);
+    return 1;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// POLYGON
@@ -749,7 +874,7 @@ int createPoly(lua_State* L)
     g_pushInstance(L, "c2Poly", poly);
     
     lua_pushinteger(L, C2_TYPE_POLY);
-    lua_setfield(L, -2, "_shapeType");
+    lua_setfield(L, -2, "__shapeType");
     
     setPtr(L, poly);
     return 1;
@@ -793,6 +918,12 @@ int getPoints(lua_State* L)
     return 1;
 }
 
+int polyGetData(lua_State* L)
+{
+    // TODO
+    return 0;
+}
+
 int polyRayTest(lua_State* L)
 {
     return objRayTest<c2Poly>(L, "c2Poly", C2_TYPE_POLY);
@@ -804,6 +935,13 @@ int polyInflate(lua_State* L)
     return 0;
 }
 
+int polyHitTest(lua_State* L) // TODO
+{
+    c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+    LUA_THROW_ERROR("NOT IMPLEMENTED YET");
+    return 0;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// RAY
@@ -811,6 +949,100 @@ int polyInflate(lua_State* L)
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // c2Ray
+
+static int rayIndex(lua_State* L) // __index
+{
+    const char* key = lua_tostring(L, 2);    
+    
+    if (strcmp(key, "x") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, ray->p.x);
+        return 1;
+    }
+    else if (strcmp(key, "y") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, ray->p.y);
+        return 1;
+    }
+    else if (strcmp(key, "t") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, ray->t);
+        return 1;
+    }
+    else if (strcmp(key, "direction") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, atan2(ray->p.y, ray->p.x));
+        return 1;
+    }
+    else if (strcmp(key, "targetX") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, ray->d.x);
+        return 1;
+    }
+    else if (strcmp(key, "targetY") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        lua_pushnumber(L, ray->d.y);
+        return 1;
+    }
+    
+    lua_getmetatable(L, -2);
+    lua_rawgetfield(L, -1, key);
+    return 1;
+}
+
+static int rayNewIndex(lua_State* L) // __newindex
+{
+    const char* key = lua_tostring(L, 2);
+    float value = lua_tonumber(L, 3);
+    
+    if (strcmp(key, "x") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->p.x = value;
+        return 0;
+    }
+    else if (strcmp(key, "y") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->p.y = value;
+        return 0;
+    }
+    else if (strcmp(key, "t") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->t = value;
+        return 0;
+    }
+    else if (strcmp(key, "direction") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->p.x = cosf(value);
+        ray->p.y = sinf(value);
+        return 0;
+    }
+    else if (strcmp(key, "targetX") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->d.x = value;
+        return 0;
+    }
+    else if (strcmp(key, "targetY") == 0)
+    {
+        c2Ray* ray = getPtrNoCheck<c2Ray>(L, "c2Ray", 1);
+        ray->d.y = value;
+        return 0;
+    }
+    
+    lua_rawset(L, 1);
+    return 0;
+}
+
 int createRay(lua_State* L)
 {
     c2Ray* ray = new c2Ray();
@@ -818,10 +1050,57 @@ int createRay(lua_State* L)
     ray->d = c2V(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
     ray->t = luaL_optnumber(L, 5, 1.0f);
     g_pushInstance(L, "c2Ray", ray);
-
+    
+    ADD_METAMETHODS("c2Ray", rayIndex, rayNewIndex);
     setPtr(L, ray);
 
     return 1;
+}
+
+int rayGetStartPosition(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    lua_pushnumber(L, ray->p.x);
+    lua_pushnumber(L, ray->p.y);
+    return 2;
+}
+
+int raySetStartPosition(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    ray->p.x = luaL_checknumber(L, 2);
+    ray->p.y = luaL_checknumber(L, 3);
+    return 0;
+}
+
+int rayGetTargetPosition(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    lua_pushnumber(L, ray->d.x);
+    lua_pushnumber(L, ray->d.y);
+    return 2;
+}
+
+int raySetTargetPosition(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    ray->d.x = luaL_checknumber(L, 2);
+    ray->d.y = luaL_checknumber(L, 3);
+    return 0;
+}
+
+int rayGetDistance(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    lua_pushnumber(L, ray->t);
+    return 1;
+}
+
+int raySetDistance(lua_State* L)
+{
+    c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+    ray->t = luaL_checknumber(L, 2);
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -947,6 +1226,7 @@ int getTransformRotation(lua_State* L)
     return 1;
 }
 
+/*
 // c2v array
 int cteatePointsArray(lua_State* L)
 {
@@ -970,12 +1250,7 @@ int cteatePointsArray(lua_State* L)
 
     return 1;
 }
-
-// c2Raycast
-int createRaycast(lua_State* L)
-{
-
-}
+*/
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 ///
@@ -1337,6 +1612,28 @@ int c2TOI_lua(lua_State* L)
     return 7;
 }
 
+int c2Impact_lua(lua_State* L)
+{
+    if (lua_gettop(L) > 2)
+    {
+        c2Ray ray = c2Ray();
+        ray.d = c2V(luaL_checknumber(L, 1), luaL_checknumber(L, 2));
+        ray.p = c2V(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
+        ray.t = luaL_checknumber(L, 5);
+        float t = luaL_checknumber(L, 6);
+        c2v result = c2Impact(ray, t);
+        lua_pushnumber(L, result.x);
+        lua_pushnumber(L, result.y);
+        return 2;
+    }
+    c2Ray ray = *getPtr<c2Ray>(L, "c2Ray", 1);
+    float t = luaL_checknumber(L, 2);
+    c2v result = c2Impact(ray, t);
+    lua_pushnumber(L, result.x);
+    lua_pushnumber(L, result.y);
+    return 2;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// LOADER
@@ -1350,8 +1647,10 @@ int loader(lua_State* L)
         {"getPosition", getCirclePosition},
         {"setRadius", setCircleRadius},
         {"getRadius", getCircleRadius},
+        {"getData", cirlceGetData},
         {"rayTest", cirlceRayTest},
         {"inflate", circleInflate},
+        {"hitTest", circleHitTest},
         {NULL, NULL}
     };
     g_createClass(L, "c2Circle", NULL, NULL, NULL, circleFunctionsList);
@@ -1361,9 +1660,10 @@ int loader(lua_State* L)
         {"getPosition", getAABBPosition},
         {"setSize", setAABBSize},
         {"getSize", getAABBSize},
-        {"getRect", getAABBRect},
+        {"getData", getAABBData},
         {"rayTest", AABBRayTest},
         {"inflate", AABBInflate},
+        {"hitTest", AABBHitTest},
         {NULL, NULL}
     };
     g_createClass(L, "c2AABB", NULL, NULL, NULL, aabbFunctionsList);
@@ -1378,6 +1678,7 @@ int loader(lua_State* L)
         {"getData", getCapsuleData},
         {"rayTest", capsuleRayTest},
         {"inflate", capsuleInflate},
+        {"hitTest", capsuleHitTest},
         {NULL, NULL}
     };
     g_createClass(L, "c2Capsule", NULL, NULL, NULL, capsuleFunctionsList);
@@ -1386,13 +1687,21 @@ int loader(lua_State* L)
         {"updatePoints", updatePoints},
         {"updatePoint", updatePoint},
         {"getPoints", getPoints},
+        {"getData", polyGetData},
         {"rayTest", polyRayTest},
         {"inflate", polyInflate},
+        {"hitTest", polyHitTest},
         {NULL, NULL}
     };
     g_createClass(L, "c2Poly", NULL, NULL, NULL, polyFunctionsList);
 
     const luaL_Reg rayFunctionsList[] = {
+        {"getStartPosition", rayGetStartPosition},
+        {"setStartPosition", raySetStartPosition},
+        {"getTargetPosition", rayGetTargetPosition},
+        {"setTargetPosition", raySetTargetPosition},
+        {"getT", rayGetDistance},
+        {"setT", raySetDistance},
         {NULL, NULL}
     };
     g_createClass(L, "c2Ray", NULL, NULL, NULL, rayFunctionsList);
@@ -1443,6 +1752,8 @@ int loader(lua_State* L)
         {"AABBtoPolyManifold", c2AABBtoPolyManifold_lua},
         {"capsuleToPolyManifold", c2CapsuletoPolyManifold_lua},
         {"polyToPolyManifold", c2PolytoPolyManifold_lua},
+        
+        {"impact", c2Impact_lua},
         
         {"GJK", c2GJK_lua},
         {"TOI", c2TOI_lua},
