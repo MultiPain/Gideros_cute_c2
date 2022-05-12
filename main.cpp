@@ -482,6 +482,20 @@ int cirlceGetData(lua_State* L)
     return 3;
 }
 
+int getCirlceBoundingBox(lua_State* L)
+{
+    c2Circle* circle = getPtr<c2Circle>(L, "c2Circle", 1);
+    float size = circle->r * 2.0f;
+    
+    lua_pushnumber(L, circle->p.x - circle->r);
+    lua_pushnumber(L, circle->p.y - circle->r);
+    lua_pushnumber(L, circle->p.x + circle->r);
+    lua_pushnumber(L, circle->p.x + circle->r);
+    lua_pushnumber(L, size);
+    lua_pushnumber(L, size);
+    return 6;
+}
+
 int cirlceRayTest(lua_State* L)
 {
     return objRayTest<c2Circle>(L, "c2Circle", C2_TYPE_CIRCLE);
@@ -648,6 +662,18 @@ int getAABBData(lua_State* L)
     lua_pushnumber(L, aabb->max.x);
     lua_pushnumber(L, aabb->max.y);
     return 4;
+}
+
+int getAABBboundingBox(lua_State* L)
+{
+    c2AABB* aabb = getPtr<c2AABB>(L, "c2AABB", 1);    
+    lua_pushnumber(L, aabb->min.x);
+    lua_pushnumber(L, aabb->min.y);
+    lua_pushnumber(L, aabb->max.x);
+    lua_pushnumber(L, aabb->max.y);
+    lua_pushnumber(L, aabb->max.x - aabb->min.x);
+    lua_pushnumber(L, aabb->max.y - aabb->min.y);
+    return 6;
 }
 
 int AABBRayTest(lua_State* L)
@@ -819,6 +845,20 @@ int getCapsuleRadius(lua_State* L)
     return 1;
 }
 
+int getCapsuleBoundingBox(lua_State* L)
+{
+    c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
+    float size = capsule->r * 2.0f;
+    
+    lua_pushnumber(L, capsule->a.x - capsule->r);
+    lua_pushnumber(L, capsule->a.y - capsule->r);
+    lua_pushnumber(L, capsule->b.x + capsule->r);
+    lua_pushnumber(L, capsule->b.y + capsule->r);
+    lua_pushnumber(L, size);
+    lua_pushnumber(L, capsule->b.y - capsule->a.y + size);
+    return 6;
+}
+
 int getCapsuleData(lua_State* L)
 {
     c2Capsule* capsule = getPtr<c2Capsule>(L, "c2Capsule", 1);
@@ -959,8 +999,37 @@ int getPoints(lua_State* L)
     return 1;
 }
 
+int getPolyBoundingBox(lua_State* L)
+{
+    c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+    c2x transform = checkTransform(L, 2);
+    
+    float minX = FLT_MAX;
+    float minY = FLT_MAX;
+    float maxX = 0.0f;
+    float maxY = 0.0f;
+    
+    for (int i = 0; i < poly->count; i++)
+    {
+        minX = fminf(minX, (transform.p.x + poly->verts[i].x));
+        minY = fminf(minY, (transform.p.y + poly->verts[i].y));
+        maxX = fmaxf(maxX, (transform.p.x + poly->verts[i].x));
+        maxY = fmaxf(maxY, (transform.p.y + poly->verts[i].y));
+    }
+    
+    lua_pushnumber(L, minX);
+    lua_pushnumber(L, minY);
+    lua_pushnumber(L, maxX);
+    lua_pushnumber(L, maxY);
+    lua_pushnumber(L, maxX - minX);
+    lua_pushnumber(L, maxY - minY);
+    
+    return 6;
+}
+
 int polyGetData(lua_State* L)
 {
+    LUA_THROW_ERROR("NOT IMPLEMENTED YET");
     // TODO
     return 0;
 }
@@ -980,6 +1049,7 @@ int polyHitTest(lua_State* L) // TODO
 {
     c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
     LUA_THROW_ERROR("NOT IMPLEMENTED YET");
+    // TODO
     return 0;
 }
 
@@ -1689,6 +1759,7 @@ int loader(lua_State* L)
         {"setRadius", setCircleRadius},
         {"getRadius", getCircleRadius},
         {"getData", cirlceGetData},
+        {"getBoundingBox", getCirlceBoundingBox},
         {"rayTest", cirlceRayTest},
         {"inflate", circleInflate},
         {"hitTest", circleHitTest},
@@ -1702,6 +1773,7 @@ int loader(lua_State* L)
         {"setSize", setAABBSize},
         {"getSize", getAABBSize},
         {"getData", getAABBData},
+        {"getBoundingBox", getAABBboundingBox},
         {"rayTest", AABBRayTest},
         {"inflate", AABBInflate},
         {"hitTest", AABBHitTest},
@@ -1716,6 +1788,7 @@ int loader(lua_State* L)
         {"getHeight", getCapsuleHeight},
         {"setRadius", setCapsuleRadius},
         {"getRadius", getCapsuleRadius},
+        {"getBoundingBox", getCapsuleBoundingBox},
         {"getData", getCapsuleData},
         {"rayTest", capsuleRayTest},
         {"inflate", capsuleInflate},
@@ -1728,6 +1801,7 @@ int loader(lua_State* L)
         {"updatePoints", updatePoints},
         {"updatePoint", updatePoint},
         {"getPoints", getPoints},
+        {"getBoundingBox", getPolyBoundingBox},
         {"getData", polyGetData},
         {"rayTest", polyRayTest},
         {"inflate", polyInflate},

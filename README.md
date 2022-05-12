@@ -130,6 +130,7 @@ result, normalX, normalY, t = AABB:rayTest(ray [, transform])
 result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 AABB:inflate(skin_factor)
 bool = AABB:hitTest(x, y)
+minX, minY, maxX, maxY, w, h = AABB:getBoundingBox()
 ```
 
 #### Properties
@@ -153,6 +154,7 @@ result, normalX, normalY, t = Capsule:rayTest(ray [, transform])
 result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 Capsule:inflate(skin_factor)
 bool = Capsule:hitTest(x, y)
+minX, minY, maxX, maxY, w, h = Capsule:getBoundingBox()
 ```
 
 #### Properties
@@ -173,6 +175,7 @@ result, normalX, normalY, t = Poly:rayTest(ray [, transform])
 result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 Poly:inflate(skin_factor)
 bool = Poly:hitTest(x, y [, transform])
+minX, minY, maxX, maxY, w, h = Poly:getBoundingBox()
 ```
 
 ## Ray
