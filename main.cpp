@@ -1011,10 +1011,10 @@ int getPolyBoundingBox(lua_State* L)
     
     for (int i = 0; i < poly->count; i++)
     {
-        minX = fminf(minX, (transform.p.x + poly->verts[i].x));
-        minY = fminf(minY, (transform.p.y + poly->verts[i].y));
-        maxX = fmaxf(maxX, (transform.p.x + poly->verts[i].x));
-        maxY = fmaxf(maxY, (transform.p.y + poly->verts[i].y));
+        minX = c2Min(minX, (transform.p.x + poly->verts[i].x));
+        minY = c2Min(minY, (transform.p.y + poly->verts[i].y));
+        maxX = c2Max(maxX, (transform.p.x + poly->verts[i].x));
+        maxY = c2Max(maxY, (transform.p.y + poly->verts[i].y));
     }
     
     lua_pushnumber(L, minX);
