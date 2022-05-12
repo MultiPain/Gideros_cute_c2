@@ -926,7 +926,7 @@ int capsuleHitTest(lua_State* L)
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void UpdatePointsInternal(lua_State* L, int idx, c2Poly* poly)
+void updatePointsInternal(lua_State* L, int idx, c2Poly* poly)
 {
     luaL_checktype(L, idx, LUA_TTABLE);
     int l = lua_objlen(L, idx);
@@ -951,7 +951,7 @@ void UpdatePointsInternal(lua_State* L, int idx, c2Poly* poly)
 int createPoly(lua_State* L)
 {
     c2Poly* poly = new c2Poly();
-    UpdatePointsInternal(L, 1, poly);
+    updatePointsInternal(L, 1, poly);
     g_pushInstance(L, "c2Poly", poly);
     
     lua_pushinteger(L, C2_TYPE_POLY);
@@ -964,7 +964,7 @@ int createPoly(lua_State* L)
 int updatePoints(lua_State* L)
 {
     c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
-    UpdatePointsInternal(L, 2, poly);
+    updatePointsInternal(L, 2, poly);
     return 0;
 }
 
