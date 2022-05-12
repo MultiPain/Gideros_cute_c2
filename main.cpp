@@ -947,6 +947,18 @@ void updatePointsInternal(lua_State* L, int idx, c2Poly* poly)
     c2MakePoly(poly);
 }
 
+void getBoundingBoxInternal(c2Poly* poly, c2x& transform, c2v& min, c2v& max)
+{
+    for (int i = 0; i < poly->count; i++)
+    {
+        c2v pt = c2Add(transform.p, poly->verts[i]);
+        min.x = c2Min(min.x, pt.x);
+        min.y = c2Min(min.y, pt.y);
+        max.x = c2Max(max.x, pt.x);
+        max.y = c2Max(max.y, pt.y);
+    }
+}
+
 // c2Poly
 int createPoly(lua_State* L)
 {
@@ -1004,25 +1016,17 @@ int getPolyBoundingBox(lua_State* L)
     c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
     c2x transform = checkTransform(L, 2);
     
-    float minX = FLT_MAX;
-    float minY = FLT_MAX;
-    float maxX = 0.0f;
-    float maxY = 0.0f;
+    c2v min = c2V(FLT_MAX, FLT_MAX);
+    c2v max = c2V(0.0f, 0.0f);
     
-    for (int i = 0; i < poly->count; i++)
-    {
-        minX = c2Min(minX, (transform.p.x + poly->verts[i].x));
-        minY = c2Min(minY, (transform.p.y + poly->verts[i].y));
-        maxX = c2Max(maxX, (transform.p.x + poly->verts[i].x));
-        maxY = c2Max(maxY, (transform.p.y + poly->verts[i].y));
-    }
+    getBoundingBoxInternal(poly, transform, min, max);
     
-    lua_pushnumber(L, minX);
-    lua_pushnumber(L, minY);
-    lua_pushnumber(L, maxX);
-    lua_pushnumber(L, maxY);
-    lua_pushnumber(L, maxX - minX);
-    lua_pushnumber(L, maxY - minY);
+    lua_pushnumber(L, min.x);
+    lua_pushnumber(L, min.y);
+    lua_pushnumber(L, max.x);
+    lua_pushnumber(L, max.y);
+    lua_pushnumber(L, max.x - min.x);
+    lua_pushnumber(L, max.y - min.y);
     
     return 6;
 }
@@ -1045,12 +1049,22 @@ int polyInflate(lua_State* L)
     return 0;
 }
 
-int polyHitTest(lua_State* L) // TODO
+int polyHitTest(lua_State* L)
 {
-    c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
-    LUA_THROW_ERROR("NOT IMPLEMENTED YET");
+    //LUA_THROW_ERROR("NOT IMPLEMENTED YET");
     // TODO
-    return 0;
+    c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+    c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+    c2x transform = checkTransform(L, 4);
+     
+    c2AABB aabb = c2AABB();
+    aabb.min = c2V(FLT_MAX, FLT_MAX);
+    
+    getBoundingBoxInternal(poly, transform, aabb.min, aabb.max);
+    
+    lua_pushboolean(L, c2AABBtoPoint(aabb, point));
+    
+    return 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
