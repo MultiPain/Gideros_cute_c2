@@ -122,20 +122,61 @@ C2_TYPE getShapeType(lua_State* L, int idx)
     return shapeType;
 }
 
-void lua_pushmanifold(lua_State* L, c2Manifold m)
+int lua_pushmanifold(lua_State* L, c2Manifold m)
 {
-    lua_pushinteger(L, m.count);
+// OLD
+//    lua_pushinteger(L, m.count);
 
-    lua_pushnumber(L, m.depths[0]);
-    lua_pushnumber(L, m.depths[1]);
+//    lua_pushnumber(L, m.depths[0]);
+//    lua_pushnumber(L, m.depths[1]);
 
-    lua_pushnumber(L, m.contact_points[0].x);
-    lua_pushnumber(L, m.contact_points[0].y);
-    lua_pushnumber(L, m.contact_points[1].x);
-    lua_pushnumber(L, m.contact_points[1].y);
+//    lua_pushnumber(L, m.contact_points[0].x);
+//    lua_pushnumber(L, m.contact_points[0].y);
+//    lua_pushnumber(L, m.contact_points[1].x);
+//    lua_pushnumber(L, m.contact_points[1].y);
 
-    lua_pushnumber(L, m.n.x);
-    lua_pushnumber(L, m.n.y);
+//    lua_pushnumber(L, m.n.x);
+//    lua_pushnumber(L, m.n.y);
+    
+//    return 9;
+// NEW
+//  {count = value, depth = {value1, value2}, contact_points = {{x = value, y = value}, {x = value, y = value}}, normal = {x = value, y = value}}
+    lua_createtable(L, 0, 4);                   // result_t
+    lua_pushnumber(L, m.count);                 // result_t, number
+    lua_setfield(L, -2, "count");               // result_t
+    
+    lua_createtable(L, 2, 0);                   // result_t, depths_t
+    lua_pushnumber(L, m.depths[0]);             // result_t, depths_t, number
+    lua_rawseti(L, -2, 1);                      // result_t, depths_t
+    lua_pushnumber(L, m.depths[1]);             // result_t, depths_t, number
+    lua_rawseti(L, -2, 2);                      // result_t, depths_t
+    lua_setfield(L, -2, "depths");              // result_t
+    
+    lua_createtable(L, 2, 0);                   // result_t, cp_t
+    
+    lua_createtable(L, 0, 2);                   // result_t, cp_t, p1_t
+    lua_pushnumber(L, m.contact_points[0].x);   // result_t, cp_t, p1_t, number
+    lua_setfield(L, -2, "x");                   // result_t, cp_t, p1_t
+    lua_pushnumber(L, m.contact_points[0].y);   // result_t, cp_t, p1_t, number
+    lua_setfield(L, -2, "y");                   // result_t, cp_t, p1_t
+    lua_rawseti(L, -2, 1);                      // result_t, cp_t
+    
+    lua_createtable(L, 0, 2);                   // result_t, cp_t, p2_t
+    lua_pushnumber(L, m.contact_points[1].x);   // result_t, cp_t, p2_t, number
+    lua_setfield(L, -2, "x");                   // result_t, cp_t, p2_t
+    lua_pushnumber(L, m.contact_points[1].y);   // result_t, cp_t, p2_t, number
+    lua_setfield(L, -2, "y");                   // result_t, cp_t, p2_t
+    lua_rawseti(L, -2, 2);                      // result_t, cp_t
+    lua_setfield(L, -2, "contact_points");      // result_t
+    
+    lua_createtable(L, 0, 2);                   // result_t, norm_t
+    lua_pushnumber(L, m.n.x);                   // result_t, norm_t, number
+    lua_setfield(L, -2, "x");                   // result_t, norm_t
+    lua_pushnumber(L, m.n.y);                   // result_t, norm_t, number
+    lua_setfield(L, -2, "y");                   // result_t, norm_t
+    lua_setfield(L, -2, "normal");              // result_t
+    
+    return 1;
 }
 
 c2x checkTransform(lua_State* L, int idx);
@@ -1415,8 +1456,8 @@ int c2Collide_lua(lua_State* L)
     c2Manifold m;
 
     c2Collide(A, &transformA, shapeTypeA, B, &transformB, shapeTypeB, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2Collided_lua(lua_State* L)
@@ -1442,8 +1483,8 @@ int c2CircletoCircleManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CircletoCircleManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2CircletoAABBManifold_lua(lua_State* L)
@@ -1453,8 +1494,8 @@ int c2CircletoAABBManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CircletoAABBManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2CircletoCapsuleManifold_lua(lua_State* L)
@@ -1464,8 +1505,8 @@ int c2CircletoCapsuleManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CircletoCapsuleManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2AABBtoAABBManifold_lua(lua_State* L)
@@ -1475,8 +1516,8 @@ int c2AABBtoAABBManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2AABBtoAABBManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2AABBtoCapsuleManifold_lua(lua_State* L)
@@ -1486,8 +1527,8 @@ int c2AABBtoCapsuleManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2AABBtoCapsuleManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2CapsuletoCapsuleManifold_lua(lua_State* L)
@@ -1497,8 +1538,8 @@ int c2CapsuletoCapsuleManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CapsuletoCapsuleManifold(A, B, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2CircletoPolyManifold_lua(lua_State* L)
@@ -1509,8 +1550,8 @@ int c2CircletoPolyManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CircletoPolyManifold(A, B, bx, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2AABBtoPolyManifold_lua(lua_State* L)
@@ -1521,8 +1562,8 @@ int c2AABBtoPolyManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2AABBtoPolyManifold(A, B, &bx, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2CapsuletoPolyManifold_lua(lua_State* L)
@@ -1533,8 +1574,8 @@ int c2CapsuletoPolyManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2CapsuletoPolyManifold(A, B, &bx, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2PolytoPolyManifold_lua(lua_State* L)
@@ -1546,8 +1587,8 @@ int c2PolytoPolyManifold_lua(lua_State* L)
     c2Manifold m;
 
     c2PolytoPolyManifold(A, &ax, B, &bx, &m);
-    lua_pushmanifold(L, m);
-    return 9;
+    
+    return lua_pushmanifold(L, m);
 }
 
 int c2GJK_lua(lua_State* L)

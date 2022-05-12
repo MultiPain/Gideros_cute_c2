@@ -66,18 +66,27 @@ result, normalX, normalY, t = CuteC2.castRay(rayX1, rayY1, rayX2, rayY2, rayLen,
 x, y = CuteC2.impact(ray, t)
 x, y = CuteC2.impact(rayX1, rayY1, rayX2, rayY2, rayLen, t)
 
--- 'MAINFOLD' is 9 values: count, depths1, depths2, contact_point1x, contact_point1y, contact_point2x, contact_point2y, normalX, normalY
-MAINFOLD = CuteC2.collide(object1, object2 [, transform1, transform2])
-MAINFOLD = CuteC2.circleToCircleManifold(circle1, circle2)
-MAINFOLD = CuteC2.circleToAABBManifold(circle, aabb)
-MAINFOLD = CuteC2.circleToCapsuleManifold(circle, capsule)
-MAINFOLD = CuteC2.AABBtoAABBManifold(aabb1, aabb2)
-MAINFOLD = CuteC2.AABBtoCapsuleManifold(aabb, capsule)
-MAINFOLD = CuteC2.capsuleToCapsuleManifold(capsule1, capsule2)
-MAINFOLD = CuteC2.circletoPolyManifold(circle, poly)
-MAINFOLD = CuteC2.AABBtoPolyManifold(aabb, poly)
-MAINFOLD = CuteC2.capsuleToPolyManifold(capsule, poly)
-MAINFOLD = CuteC2.polyToPolyManifold(poly1, poly2)
+-- Mainfold (table):
+-- {
+--		count = number,
+--		depth = {number1, number2},
+--		contact_points = {
+--			{x = number, y = number}, 
+--			{x = number, y = number}
+--		}, 
+--		normal = {x = number, y = number}
+-- }
+Mainfold = CuteC2.collide(object1, object2 [, transform1, transform2])
+Mainfold = CuteC2.circleToCircleManifold(circle1, circle2)
+Mainfold = CuteC2.circleToAABBManifold(circle, aabb)
+Mainfold = CuteC2.circleToCapsuleManifold(circle, capsule)
+Mainfold = CuteC2.AABBtoAABBManifold(aabb1, aabb2)
+Mainfold = CuteC2.AABBtoCapsuleManifold(aabb, capsule)
+Mainfold = CuteC2.capsuleToCapsuleManifold(capsule1, capsule2)
+Mainfold = CuteC2.circletoPolyManifold(circle, poly)
+Mainfold = CuteC2.AABBtoPolyManifold(aabb, poly)
+Mainfold = CuteC2.capsuleToPolyManifold(capsule, poly)
+Mainfold = CuteC2.polyToPolyManifold(poly1, poly2)
 ```
 ### Advanced functions
 Check the [source code](https://github.com/RandyGaul/cute_headers/blob/df3b63e072afa275a72ce8aa7fce0428a5966e0c/cute_c2.h#L342) for more information
