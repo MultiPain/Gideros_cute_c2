@@ -13,36 +13,36 @@ require "CuteC2"
 -- x (number): x position
 -- y (number): y position
 -- r (number): radius
-table = CuteC2.circle(x, y, r)
+Circle = CuteC2.circle(x, y, r)
 
 -- x (number): x position
 -- y (number): y position
 -- w (number): width
 -- h (number): height
 -- anchor point is in top left corner
-table = CuteC2.aabb(x, y, w, h)
+AABB = CuteC2.aabb(x, y, w, h)
 
 -- x (number): x position
 -- y (number): y position
 -- h (number): height
 -- r (number): radius
-table = CuteC2.capsule(x, y, h, r)
+Capsule = CuteC2.capsule(x, y, h, r)
 
 -- points (table): table of x/y pairs (example: {0,0, 100,50, 60,30, 40,90})
 -- !!!IMPORTANT NOTE!!! maximum amount of points pairs is 8, everything beyond this limit is ignored
-table = CuteC2.poly(points)
+Poly = CuteC2.poly(points)
 
 -- x1 (number): x start position
 -- y1 (number): y start position
 -- x2 (number): x direction position (must be normalized)
 -- y2 (number): y direction position (must be normalized)
 -- len (number): ray lenght
-table = CuteC2.ray(x1, y1, x2, y2, len)
+Ray = CuteC2.ray(x1, y1, x2, y2, len)
 
 -- x (number): x position (default: 0)
 -- y (number): y position (default: 0)
 -- r (number): rotation (default: 0)
-table = CuteC2.transform([x, y, r])
+Transform = CuteC2.transform([x, y, r])
 ```
 
 ### Functions
