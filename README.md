@@ -97,7 +97,7 @@ distance, aX, aY, bX, bY, iterations = CuteC2.GJK(object1, object2 [, transform1
 -- nx, ny (numbers): Surface normal from shape A to B at the time of impact.
 -- px, py (numbers): Point of contact between shapes A and B at time of impact.
 -- iterations (number): Number of iterations the solver underwent.
-hit, toi, nx, ny, px, py, iterations = CuteC2.TOI(object1, v1x, v1y, object2, v2x, v2y [, use_radians, transform1, transform2])
+hit, toi, nx, ny, px, py, iterations = CuteC2.TOI(object1, v1x, v1y, object2, v2x, v2y [, use_radius, transform1, transform2])
 ```
 
 ## Circle
