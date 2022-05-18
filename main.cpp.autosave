@@ -1036,8 +1036,6 @@ int polyInflate(lua_State* L)
 
 int polyHitTest(lua_State* L)
 {
-	//LUA_THROW_ERROR("NOT IMPLEMENTED YET");
-	// TODO
 	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
 	c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
 	c2x transform = checkTransform(L, 4);
