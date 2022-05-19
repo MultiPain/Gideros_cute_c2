@@ -17,7 +17,7 @@ Circle = CuteC2.circle(x, y, r)
 -- minX, minY (numbers): top left corner position 
 -- maxX, maxY (numbers): bottom right corner position
 -- anchor point is in top left corner
-AABB = CuteC2.aabb(minX, minY, maxX maxY)
+AABB = CuteC2.aabb(minX, minY, maxX, maxY)
 
 -- x, y (numbers): position 
 -- h (number): height
@@ -85,7 +85,7 @@ Mainfold = CuteC2.polyToPolyManifold(poly1, poly2)
 Check the [source code](https://github.com/RandyGaul/cute_headers/blob/df3b63e072afa275a72ce8aa7fce0428a5966e0c/cute_c2.h#L342) for more information
 ```lua
 distance, aX, aY, bX, bY, iterations = CuteC2.GJK(object1, object2 [, transform1, transform2])
--- hit (number): 1 if shapes were touching at the TOI, 0 if they never hit.
+-- hit (bool): true if shapes were touching at the TOI, false if they never hit.
 -- toi (number): The time of impact between two shapes.
 -- nx, ny (numbers): Surface normal from shape A to B at the time of impact.
 -- px, py (numbers): Point of contact between shapes A and B at time of impact.
