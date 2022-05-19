@@ -14,10 +14,10 @@ require "CuteC2"
 -- r (number): radius
 Circle = CuteC2.circle(x, y, r)
 
--- x, y (numbers): position 
--- w, h (numbers): size
+-- minX, minY (numbers): top left corner position 
+-- maxX, maxY (numbers): bottom right corner position
 -- anchor point is in top left corner
-AABB = CuteC2.aabb(x, y, w, h)
+AABB = CuteC2.aabb(minX, minY, maxX maxY)
 
 -- x, y (numbers): position 
 -- h (number): height
