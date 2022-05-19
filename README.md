@@ -10,20 +10,16 @@ require "CuteC2"
 
 ### Objects
 ```lua
--- x (number): x position
--- y (number): y position
+-- x, y (numbers): position 
 -- r (number): radius
 Circle = CuteC2.circle(x, y, r)
 
--- x (number): x position
--- y (number): y position
--- w (number): width
--- h (number): height
+-- x, y (numbers): position 
+-- w, h (numbers): size
 -- anchor point is in top left corner
 AABB = CuteC2.aabb(x, y, w, h)
 
--- x (number): x position
--- y (number): y position
+-- x, y (numbers): position 
 -- h (number): height
 -- r (number): radius
 Capsule = CuteC2.capsule(x, y, h, r)
@@ -32,15 +28,12 @@ Capsule = CuteC2.capsule(x, y, h, r)
 -- !!!IMPORTANT NOTE!!! maximum amount of points pairs is 8, everything beyond this limit is ignored
 Poly = CuteC2.poly(points)
 
--- x1 (number): x start position
--- y1 (number): y start position
--- x2 (number): x direction position (must be normalized)
--- y2 (number): y direction position (must be normalized)
--- len (number): ray lenght
-Ray = CuteC2.ray(x1, y1, x2, y2, len)
+-- x1, y1 (numbers): start position
+-- x2, y2 (numbers): destenation position (gets normalized)
+-- len (number): ray lenght (default: distance between (x1, y1) and (x2, y2))
+Ray = CuteC2.ray(x1, y1, x2, y2 [, len])
 
--- x (number): x position (default: 0)
--- y (number): y position (default: 0)
+-- x, y (numbers): position (default: (0, 0))
 -- r (number): rotation (default: 0)
 Transform = CuteC2.transform([x, y, r])
 ```
@@ -104,117 +97,184 @@ hit, toi, nx, ny, px, py, iterations = CuteC2.TOI(object1, v1x, v1y, object2, v2
 ```lua
 Circle:setPosition(x, y)
 x, y = Circle:getPosition()
-Circle:setRadius(r)
-r = Circle:getRadius()
-result, normalX, normalY, t = Circle:rayTest(ray [, transform])
-result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+Circle:setX(x)
+x = Circle:getX()
+Circle:setY(y)
+y = Circle:getY()
+Circle:setRadius(radius)
+radius = Circle:getRadius()
+minX, minY, maxX, maxY = Circle:getBoundingBox()
+x, y, radius = Circle:getData()
+Circle:move(dx, dy)
 Circle:inflate(skin_factor)
 bool = Circle:hitTest(x, y)
-```
-
-#### Properties
-```lua
-Circle.x -- get/set
-Circle.y -- get/set
-Circle.radius -- get/set
+result, normalX, normalY, t = Circle:rayTest(ray [, transform])
+result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 ```
 
 ## AABB
 ```lua
+-- x, y (number): top left corner position
+AABB:setMinPosition(x, y)
+x, y = AABB:getMinPosition()
+-- x, y (number): bottom right corner position
+AABB:setMaxPosition(x, y)
+x, y = AABB:getMaxPosition()
+-- x, y (number): center position
 AABB:setPosition(x, y)
 x, y = AABB:getPosition()
+AABB:setMinX(x)
+x = AABB:getMinX()
+AABB:setMinY(y)
+y = AABB:getMinY()
+AABB:setMaxX(x)
+x = AABB:getMaxX()
+AABB:setMaxY(y)
+y = AABB:getMaxY()
+AABB:setX(x)
+x = AABB:getX()
+AABB:setY(y)
+y = AABB:getY()
+-- w, h (number): full size (relative to shape center)
 AABB:setSize(w, h)
 w, h = AABB:getSize()
-minX, minY, maxX, maxY = AABB:getRect()
-result, normalX, normalY, t = AABB:rayTest(ray [, transform])
-result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+-- w, h (number): half size (relative to shape center)
+AABB:setHalfSize(w, h)
+w, h = AABB:getHalfSize()
+-- w (number): full width (relative to shape center)
+AABB:setWidth(w)
+w = AABB:getWidth()
+-- h (number): full height (relative to shape center)
+AABB:setHeight(h)
+h = AABB:getHeight()
+-- w (number): half width (relative to shape center)
+AABB:setHalfWidth(w)
+w = AABB:getHalfWidth()
+-- h (number): half height (relative to shape center)
+AABB:setHalfHeight(h)
+h = AABB:getHalfHeight()
+
+minX, minY, maxX, maxY = AABB:getBoundingBox()
+minX, minY, maxX, maxY, fullW, fullH = AABB:getData()
+AABB:move(dx, dy)
 AABB:inflate(skin_factor)
 bool = AABB:hitTest(x, y)
-minX, minY, maxX, maxY, w, h = AABB:getBoundingBox()
-```
-
-#### Properties
-```lua
-AABB.x -- get/set
-AABB.y -- get/set
-AABB.width -- get/set
-AABB.height -- get/set
+result, normalX, normalY, t = AABB:rayTest(ray [, transform])
+result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 ```
 
 ## Capsule
 ```lua
-Capsule:setPosition(x, y)
-x, y = Capsule:getPosition()
-Capsule:setHeight(h)
-h = Capsule:getHeight()
-Capsule:setRadius(r)
-r = Capsule:getRadius()
-x1, y1, x2, y2, r = Capsule:getData()
-result, normalX, normalY, t = Capsule:rayTest(ray [, transform])
-result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
-Capsule:inflate(skin_factor)
-bool = Capsule:hitTest(x, y)
-minX, minY, maxX, maxY, w, h = Capsule:getBoundingBox()
+         , - ~ ~ ~ - ,-------------.-
+     , '               ' ,         |
+   ,                       ,       |  Radius
+  ,                         ,      |
+ ,- - - - - - -X-<Tip - - - -,-----|-
+ ,                           ,     |
+ ,                           ,     |
+ ,                           ,     |
+ ,             X < Center    ,     | Height
+ ,                           ,     |
+ ,                           ,     |
+ ,             |             ,     |
+ ,- - - - - - -X-<Base- - - -,-----|-
+  ,                         ,      |
+   ,                       ,       | Radius
+     ,                  , '        |
+       ' - , _ _ _ ,  '_ _ _ _ _ _ |_
 ```
 
-#### Properties
 ```lua
-Capsule.x -- get/set
-Capsule.y -- get/set
-Capsule.radius -- get/set
-Capsule.height -- get/set
+-- x, y (number): center position
+Capsule:setPosition(x, y)
+x, y = Capsule:getPosition()
+-- x, y (number): position of the top point
+Capsule:setTipPosition(x, y)
+x, y = Capsule:getTipPosition()
+-- x, y (number): position of the bottom point
+Capsule:setBasePosition(x, y)
+x, y = Capsule:getBasePosition()
+Capsule:setX(x)
+x = Capsule:getX()
+Capsule:setY(y)
+y = Capsule:getY()
+Capsule:setTipX(x)
+x = Capsule:getTipX()
+Capsule:setTipY(y)
+y = Capsule:getTipY()
+Capsule:setBaseX(x)
+x = Capsule:getBaseX()
+Capsule:setBaseY(y)
+y = Capsule:getBaseY()
+-- h (number): height
+Capsule:setHeight(h)
+h = Capsule:getHeight()
+-- r (number): radius
+Capsule:setRadius(r)
+r = Capsule:getRadius()
+Capsule:setSize(radius, height)
+radius, height = Capsule:getSize()
+minX, minY, maxX, maxY = Capsule:getBoundingBox()
+tipX, tipY, baseX, baseY, radius = Capsule:getData()
+Capsule:move(dx, dy)
+Capsule:inflate(skin_factor)
+bool = Capsule:hitTest(x, y)
+result, normalX, normalY, t = Capsule:rayTest(ray [, transform])
+result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 ```
 
 ## Poly
 ```lua
--- replaces existing points
-Poly:updatePoints(points)
+-- points (table): table of x/y pairs (example: {0,0, 100,50, 60,30, 40,90})
+Poly:setPoints(points)
 Poly:updatePoint(index, x, y)
 table = Poly:getPoints()
-result, normalX, normalY, t = Poly:rayTest(ray [, transform])
-result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+table = Poly:getNormals()
 Poly:inflate(skin_factor)
 bool = Poly:hitTest(x, y [, transform])
 minX, minY, maxX, maxY, w, h = Poly:getBoundingBox()
+-- return a table with all points & normals: {points = {...}, normals = {...}}
+table = Poly:getData()
+Poly:inflate(skin_factor)
+result, normalX, normalY, t = Poly:rayTest(ray [, transform])
+result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
 ```
 
 ## Ray
 ```lua
 ray:setStartPosition(x, y)
 x, y = Ray:getStartPosition()
+-- x, y (number): destenation point (gets normalized, and changed to a direction vector)
 ray:setTargetPosition(x, y)
 x, y = Ray:getTargetPosition()
-Ray:setT(number)
-t = Ray:getT()
-```
-
-#### Properties
-```lua
-Ray.x -- get/set
-Ray.y -- get/set
-Ray.t -- get/set (distance along "direction" from position "x, y" to find endpoint of ray)
-Ray.direction -- get/set (angle in radians)
-Ray.targetX -- get/set
-Ray.targetY -- get/set
+Ray:setStartX(x)
+x = Ray:getStartX()
+Ray:setStartY(y)
+y = Ray:getStartY()
+x = Ray:getTargetX()
+y = Ray:getTargetY()
+Ray:setLength(len)
+len = Ray:getLength()
+Ray:setDirection(radians)
+radians = Ray:getDirection()
+Ray:move(dx, dy)
+startX, startY, directionX, directionY, len = Poly:getData()
 ```
 
 ## Transform
 ```lua
 Transform:setPosition(x, y)
 x, y = Transform:getPosition()
+Transform:setX(x)
+x = Transform:getX()
+Transform:setY(y)
+y = Transform:getY()
 Transform:move(deltaX, deltaY)
 Transform:setRotation(radians)
 radians = Transform:getRotation()
 Transform:rotate(amount_in_radians)
+Transform:move(dx, dy)
 ```
-
-#### Properties
-```lua
-Transform.x -- get/set
-Transform.y -- get/set
-Transform.rotation -- get/set
-```
-
 
 ## Shape types
 ```lua
