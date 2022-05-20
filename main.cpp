@@ -52,9 +52,7 @@ static int DUMP_INDEX = 0;
 static void stackDump(lua_State* L, const char* prefix = "")
 {
 	int i = lua_gettop(L);
-	lua_getglobal(L, "print");
-	lua_pushfstring(L, "----------------	  %d	  ----------------\n>%s\n----------------  Stack Dump ----------------", DUMP_INDEX, prefix);
-	lua_call(L, 1, 0);
+	LUA_PRINTF("----------------	%d	----------------\n>%s\n---------------- Stack Dump ----------------", DUMP_INDEX, prefix);
 	while (i)
 	{
 		int t = lua_type(L, i);
@@ -75,9 +73,7 @@ static void stackDump(lua_State* L, const char* prefix = "")
 		i--;
 		lua_call(L, 1, 0);
 	}
-	lua_getglobal(L, "print");
-	lua_pushstring(L, "------------ Stack Dump Finished ------------\n");
-	lua_call(L, 1, 0);
+	LUA_PRINT("------------ Stack Dump Finished ------------\n");
 
 	DUMP_INDEX++;
 }
@@ -231,11 +227,18 @@ void objInflate(lua_State* L, const char* classname, C2_TYPE obj_type)
 c2x checkTransform(lua_State* L, int idx)
 {
 	if (lua_isnil(L, idx))
+	{
+		//LUA_PRINT("NOT OK (nil)");
 		return c2xIdentity();
+	}
+	
 	if (lua_gettop(L) > idx - 1)
 	{
+		//LUA_PRINT("OK");
 		return *getPtr<c2x>(L, "c2x", idx);
 	}
+	//LUA_PRINTF("NOT OK (%d, %d)\n%s", lua_gettop(L), idx - 1, lua_debugtrace(L));
+	//lua_error(L);
 	return c2xIdentity();
 }
 
@@ -1085,7 +1088,6 @@ int capsuleMove(lua_State* L)
 ///
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-
 void updatePointsInternal(lua_State* L, int idx, c2Poly* poly)
 {
 	luaL_checktype(L, idx, LUA_TTABLE);
@@ -1107,16 +1109,31 @@ void updatePointsInternal(lua_State* L, int idx, c2Poly* poly)
 	c2MakePoly(poly);
 }
 
-void getBoundingBoxInternal(c2Poly* poly, c2x& transform, c2v& min, c2v& max)
+void pushPoint(lua_State* L, float x, float y)
 {
-	for (int i = 0; i < poly->count; i++)
-	{
-		c2v pt = c2Add(transform.p, poly->verts[i]);
-		min.x = c2Min(min.x, pt.x);
-		min.y = c2Min(min.y, pt.y);
-		max.x = c2Max(max.x, pt.x);
-		max.y = c2Max(max.y, pt.y);
-	}
+	lua_createtable(L, 0, 2);
+	
+	lua_pushstring(L, "x");
+	lua_pushnumber(L, x);
+	lua_rawset(L, -3);
+	
+	lua_pushstring(L, "y");
+	lua_pushnumber(L, y);
+	lua_rawset(L, -3);
+}
+
+void updateVertexNormal(c2Poly* poly, int idx)
+{
+	int next = (idx + 1) % poly->count;
+	c2v e = c2Sub(poly->verts[next], poly->verts[idx]);
+	poly->norms[idx] = c2Norm(c2CCW90(e));
+}
+
+int getPointIndex(lua_State* L, int idx)
+{
+	int index = luaL_checkinteger(L, 2) - 1;
+	index = c2Min(index, C2_MAX_POLYGON_VERTS);
+	return index;
 }
 
 // c2Poly
@@ -1140,18 +1157,39 @@ int polyUpdatePoints(lua_State* L)
 	return 0;
 }
 
-void updateVertexNormal(c2Poly* poly, int idx)
-{
-	int next = (idx + 1) % poly->count;
-	c2v e = c2Sub(poly->verts[next], poly->verts[idx]);
-	poly->norms[idx] = c2Norm(c2CCW90(e));
-}
-
-int polyUpdatePoint(lua_State* L)
+int polyUpdatePointsXY(lua_State* L)
 {
 	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
-	int index = luaL_checkinteger(L, 2) - 1;
-	index = c2Min(index, C2_MAX_POLYGON_VERTS);
+	
+	luaL_checktype(L, 2, LUA_TTABLE);
+	int l = lua_objlen(L, 2);
+	LUA_ASSERT(l <= 0, "Incorrect points table size");
+	l = c2Min(l, C2_MAX_POLYGON_VERTS);
+	poly->count = l;
+
+	for (int i = 0; i < l; i++)
+	{
+		lua_rawgeti(L, 2, i + 1);
+		
+		lua_rawgetfield(L, -1, "x");
+		float x = luaL_checknumber(L, -1);
+		lua_pop(L, 1);
+		
+		lua_rawgetfield(L, -1, "y");
+		float y = luaL_checknumber(L, -1);
+		lua_pop(L, 2);
+		
+		poly->verts[i] = c2V(x, y);
+	}
+	c2MakePoly(poly);
+	
+	return 0;
+}
+
+int polySetVertexPosition(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
 	// Update position
 	poly->verts[index].x = luaL_checknumber(L, 3);
 	poly->verts[index].y = luaL_checknumber(L, 4);
@@ -1170,11 +1208,8 @@ int polyGetPoints(lua_State* L)
 	lua_createtable(L, poly->count * 2, 0);
 	for (int i = 0; i < poly->count; i++)
 	{
-		lua_pushnumber(L, poly->verts[i].x);
-		lua_rawseti(L, 2, i * 2 + 1);
-
-		lua_pushnumber(L, poly->verts[i].y);
-		lua_rawseti(L, 2, i * 2 + 2);
+		pushPoint(L, poly->verts[i].x, poly->verts[i].y);
+		lua_rawseti(L, -2, i + 1);
 	}
 	return 1;
 }
@@ -1185,11 +1220,8 @@ int polyGetNormals(lua_State* L)
 	lua_createtable(L, poly->count * 2, 0);
 	for (int i = 0; i < poly->count; i++)
 	{
-		lua_pushnumber(L, poly->norms[i].x);
-		lua_rawseti(L, 2, i * 2 + 1);
-
-		lua_pushnumber(L, poly->norms[i].y);
-		lua_rawseti(L, 2, i * 2 + 2);
+		pushPoint(L, poly->norms[i].x, poly->norms[i].y);
+		lua_rawseti(L, -2, i + 1);
 	}
 	return 1;
 }
@@ -1202,16 +1234,22 @@ int polyGetBoundingBox(lua_State* L)
 	c2v min = c2V(FLT_MAX, FLT_MAX);
 	c2v max = c2V(0.0f, 0.0f);
 	
-	getBoundingBoxInternal(poly, transform, min, max);
+	for (int i = 0; i < poly->count; i++)
+	{
+		c2v pt = poly->verts[i];
+		c2v pr = c2Mulrv(transform.r, pt);
+		min.x = c2Min(min.x, pr.x);
+		min.y = c2Min(min.y, pr.y);
+		max.x = c2Max(max.x, pr.x);
+		max.y = c2Max(max.y, pr.y);
+	}
 	
 	lua_pushnumber(L, min.x);
 	lua_pushnumber(L, min.y);
 	lua_pushnumber(L, max.x);
 	lua_pushnumber(L, max.y);
-	lua_pushnumber(L, max.x - min.x);
-	lua_pushnumber(L, max.y - min.y);
 	
-	return 6;
+	return 4;
 }
 
 int polyGetData(lua_State* L)
@@ -1253,7 +1291,6 @@ int polyInflate(lua_State* L)
 	return 0;
 }
 
-// TODO: take c2x rotation into account
 int polyHitTest(lua_State* L)
 {
 	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
@@ -1267,8 +1304,12 @@ int polyHitTest(lua_State* L)
 	
 	for (int i = 0; i < poly->count; i++)
 	{
-		c2v p1 = poly->verts[i + 0];
-		c2v p2 = poly->verts[(i + 1) % poly->count];
+		c2v v1 = poly->verts[i + 0];
+		c2v v2 = poly->verts[(i + 1) % poly->count];
+		
+		c2v p1 = c2Mulrv(transform.r, v1);
+		c2v p2 = c2Mulrv(transform.r, v2);
+		
 		c2v t1 = c2Sub(p2, p1);
 		c2v t2 = c2Sub(lp, p1);
 		float d = c2Det2(t1, t2);
@@ -1291,10 +1332,112 @@ int polyHitTest(lua_State* L)
 				break;
 			}
 		}
-		
 	}
 	
 	lua_pushboolean(L, result);
+	return 1;
+}
+
+int polyGetRotatedPoints(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	c2x* transform = getPtr<c2x>(L, "c2x", 2);
+	
+	lua_createtable(L, poly->count, 0);
+	for (int i = 0; i < poly->count; i++)
+	{
+		c2v pt = c2Mulrv(transform->r, poly->verts[i]);
+		pushPoint(L, pt.x, pt.y);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+int polyGetRotatedNormals(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	c2x* transform = getPtr<c2x>(L, "c2x", 2);
+	
+	lua_createtable(L, poly->count, 0);
+	for (int i = 0; i < poly->count; i++)
+	{
+		c2v pt = c2Mulrv(transform->r, poly->norms[i]);
+		pushPoint(L, pt.x, pt.y);
+		lua_rawseti(L, -2, i + 1);
+	}
+	return 1;
+}
+
+int polyGetVertexPosition(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	
+	lua_pushnumber(L, poly->verts[index].x);
+	lua_pushnumber(L, poly->verts[index].y);
+	return 2;
+}
+
+int polyGetVertexPositionX(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	
+	lua_pushnumber(L, poly->verts[index].x);
+	return 1;
+}
+
+int polyGetVertexPositionY(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	
+	lua_pushnumber(L, poly->verts[index].y);
+	return 1;
+}
+
+int polyGetRotatedVertexPosition(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	c2x* transform = getPtr<c2x>(L, "c2x", 3);
+	
+	c2v pt = c2Mulrv(transform->r, poly->verts[index]);
+	lua_pushnumber(L, pt.x);
+	lua_pushnumber(L, pt.y);
+	return 2;
+}
+
+int polyGetRotatedVertexPositionX(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	c2x* transform = getPtr<c2x>(L, "c2x", 3);
+	
+	c2v pt = c2Mulrv(transform->r, poly->verts[index]);
+	lua_pushnumber(L, pt.x);
+	return 1;
+}
+
+int polyGetRotatedVertexPositionY(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	c2x transform = checkTransform(L, 3);
+	
+	c2v pt = c2Mulrv(transform.r, poly->verts[index]);
+	lua_pushnumber(L, pt.y);
+	return 1;
+}
+
+int polyUpdateVertexRotation(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	int index = getPointIndex(L, 2);
+	c2x transform = checkTransform(L, 3);
+	
+	c2v pt = c2Mulrv(transform.r, poly->verts[index]);
+	lua_pushnumber(L, pt.y);
 	return 1;
 }
 
@@ -1530,8 +1673,17 @@ int setTransformRotation(lua_State* L)
 int getTransformRotation(lua_State* L)
 {
 	c2x* transform = getPtr<c2x>(L, "c2x", 1);
-	lua_pushnumber(L, asin(transform->r.s));
+	//lua_pushnumber(L, asin(transform->r.s));
+	lua_pushnumber(L, atan2(transform->r.s, transform->r.c));
 	return 1;
+}
+
+int getTransformCosSin(lua_State* L)
+{
+	c2x* transform = getPtr<c2x>(L, "c2x", 1);
+	lua_pushnumber(L, transform->r.c);
+	lua_pushnumber(L, transform->r.s);
+	return 2;
 }
 
 int moveTransformPosition(lua_State* L)
@@ -1545,7 +1697,7 @@ int moveTransformPosition(lua_State* L)
 int rotateTransform(lua_State* L)
 {
 	c2x* transform = getPtr<c2x>(L, "c2x", 1);
-	float r = asin(transform->r.s);
+	float r = atan2(transform->r.s, transform->r.c); //asin(transform->r.s);
 	transform->r = c2Rot(r + luaL_checknumber(L, 2));
 	return 0;
 }
@@ -1652,12 +1804,30 @@ int c2CapsuletoPoly_lua(lua_State* L)
 int c2PolytoPoly_lua(lua_State* L)
 {
 	c2Poly* A = getPtr<c2Poly>(L, "c2Poly", 1);
-	c2x transofrmA = checkTransform(L, 2);
-	c2Poly* B = getPtr<c2Poly>(L, "c2Poly", 3);
+	c2Poly* B = getPtr<c2Poly>(L, "c2Poly", 2);
+	c2x transofrmA = checkTransform(L, 3);
 	c2x transofrmB = checkTransform(L, 4);
 
 	int result = c2PolytoPoly(A, &transofrmA, B, &transofrmB);
 	lua_pushboolean(L, result);
+	return 1;
+}
+
+int c2AABBtoPoint_lua(lua_State* L)
+{
+	c2AABB A = *getPtr<c2AABB>(L, "c2AABB", 1);
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	lua_pushboolean(L, c2AABBtoPoint(A, c2V(x, y)));
+	return 1;
+}
+
+int c2CircleToPoint_lua(lua_State* L)
+{
+	c2Circle A = *getPtr<c2Circle>(L, "c2Circle", 1);
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	lua_pushboolean(L, c2CircleToPoint(A, c2V(x, y)));
 	return 1;
 }
 
@@ -2076,7 +2246,8 @@ int loader(lua_State* L)
 
 	const luaL_Reg polyFunctionsList[] = {
 		{"setPoints", polyUpdatePoints},
-		{"updatePoint", polyUpdatePoint},
+		{"setPointsXY", polyUpdatePointsXY},
+		{"setVertex", polySetVertexPosition},
 		{"getPoints", polyGetPoints},
 		{"getNormals", polyGetNormals},
 		{"getBoundingBox", polyGetBoundingBox},
@@ -2084,6 +2255,16 @@ int loader(lua_State* L)
 		{"rayTest", polyRayTest},
 		{"inflate", polyInflate},
 		{"hitTest", polyHitTest},
+		{"getRotatedPoints", polyGetRotatedPoints},
+		{"getRotatedNormals", polyGetRotatedNormals},
+		
+		{"getVertex", polyGetVertexPosition},
+		{"getVertexX", polyGetVertexPositionX},
+		{"getVertexY", polyGetVertexPositionY},
+		
+		{"getRotatedVertex", polyGetRotatedVertexPosition},
+		{"getRotatedVertexX", polyGetRotatedVertexPositionX},
+		{"getRotatedVertexY", polyGetRotatedVertexPositionY},
 		{NULL, NULL}
 	};
 	g_createClass(L, "c2Poly", NULL, NULL, NULL, polyFunctionsList);
@@ -2125,6 +2306,8 @@ int loader(lua_State* L)
 
 		{"setRotation", setTransformRotation},
 		{"getRotation", getTransformRotation},
+		{"getCosSin", getTransformCosSin},
+		
 		{"rotate", rotateTransform},
 
 		{NULL, NULL}
@@ -2149,6 +2332,11 @@ int loader(lua_State* L)
 		{"AABBtoPoly", c2AABBtoPoly_lua},
 		{"capsuleToPoly", c2CapsuletoPoly_lua},
 		{"polyToPoly", c2PolytoPoly_lua},
+		
+		{"AABBtoPoint", c2AABBtoPoint_lua},
+		{"circleToPoint", c2CircleToPoint_lua},
+		{"polyToPoint", polyHitTest},
+		{"capsuleToPoint", capsuleHitTest},
 		
 		{"castRay", c2CastRay_lua},
 		{"collide", c2Collide_lua},
