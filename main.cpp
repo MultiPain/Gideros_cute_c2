@@ -1451,13 +1451,32 @@ int createRay(lua_State* L)
 {
 	c2Ray* ray = new c2Ray();
 	ray->p = c2V(luaL_checknumber(L, 1), luaL_checknumber(L, 2));
+	ray->d = c2V(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
+	if (lua_gettop(L) < 5 || lua_isnil(L, 5))
+	{
+		c2v dir = c2Sub(ray->d, ray->p);
+		ray->t = c2Len(dir);
+	}
+	else
+	{
+		ray->t = luaL_checknumber(L, 5);
+	}
 	
-	c2v endPoint = c2V(luaL_checknumber(L, 3), luaL_checknumber(L, 4));
-	c2v direction = c2Sub(endPoint, ray->p);
-	ray->d = c2Norm(direction);
+	g_pushInstance(L, "c2Ray", ray);
 	
-	float t = c2Len(direction);
-	ray->t = luaL_optnumber(L, 5, t);
+	setPtr(L, ray);
+
+	return 1;
+}
+
+int createRayFromRotation(lua_State* L)
+{
+	c2Ray* ray = new c2Ray();
+	ray->p = c2V(luaL_checknumber(L, 1), luaL_checknumber(L, 2));
+	float rot = luaL_checknumber(L, 3);
+	ray->t = luaL_optnumber(L, 4, 1.0f);
+	ray->d.x = cosf(rot);
+	ray->d.y = sinf(rot);
 	
 	g_pushInstance(L, "c2Ray", ray);
 	
@@ -1499,7 +1518,7 @@ int rayGetStartX(lua_State* L)
 int raySetStartY(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
-	ray->p.x = luaL_checknumber(L, 2);
+	ray->p.y = luaL_checknumber(L, 2);
 	return 0;
 }
 
@@ -1521,34 +1540,90 @@ int rayGetTargetPosition(lua_State* L)
 int raySetTargetPosition(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
-	c2v p = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
-	c2v dir = c2Sub(p, ray->p);
-	ray->d = c2Norm(dir);
+	ray->d.x = luaL_checknumber(L, 2);
+	ray->d.y = luaL_checknumber(L, 3);
 	return 0;
 }
 
 int rayGetTargetX(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
-	lua_pushnumber(L, ray->p.x);
+	lua_pushnumber(L, ray->d.x);
 	return 1;
+}
+
+int raySetTargetX(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	ray->d.x = luaL_checknumber(L, 2);
+	return 0;
 }
 
 int rayGetTargetY(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
-	lua_pushnumber(L, ray->p.x);
+	lua_pushnumber(L, ray->d.y);
 	return 1;
 }
 
-int rayGetDistance(lua_State* L)
+int raySetTargetY(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	ray->d.y = luaL_checknumber(L, 2);
+	return 0;
+}
+
+int rayFaceTo(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	c2v p = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+	c2v dir = c2Sub(p, ray->p);
+	ray->d = c2Norm(dir);
+	if (lua_gettop(L) < 4 || lua_isnil(L, 4))
+	{
+		ray->t = c2Len(dir);
+	}
+	else
+	{
+		ray->t = luaL_checknumber(L, 4);
+	}
+	return 0;
+}
+
+int rayGetFacePosition(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	float x = ray->t * ray->d.x + ray->p.x;
+	float y = ray->t * ray->d.y + ray->p.y;
+	lua_pushnumber(L, x);
+	lua_pushnumber(L, y);
+	return 2;
+}
+
+int rayGetFaceX(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	float x = ray->t * ray->d.x + ray->p.x;
+	lua_pushnumber(L, x);
+	return 1;
+}
+
+int rayGetFaceY(lua_State* L)
+{
+	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
+	float y = ray->t * ray->d.y + ray->p.y;
+	lua_pushnumber(L, y);
+	return 1;
+}
+
+int rayGetLength(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
 	lua_pushnumber(L, ray->t);
 	return 1;
 }
 
-int raySetDistance(lua_State* L)
+int raySetLength(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
 	ray->t = luaL_checknumber(L, 2);
@@ -1593,11 +1668,20 @@ int rayGetData(lua_State* L)
 	return 5;
 }
 
-
-int rayNormalizeTargetPosition(lua_State* L)
+int rayNormalize(lua_State* L)
 {
 	c2Ray* ray = getPtr<c2Ray>(L, "c2Ray", 1);
-	ray->d = c2Norm(c2Sub(ray->d, ray->p));
+	c2v dir = c2Sub(ray->d, ray->p);
+	
+	if (lua_gettop(L) > 1 && lua_toboolean(L, 2))
+	{
+		ray->t = c2Len(dir);
+	}
+	else
+		ray->t = 1.0f;
+	
+	ray->d = c2Norm(dir);
+	
 	return 0;
 }
 
@@ -2270,27 +2354,36 @@ int loader(lua_State* L)
 	g_createClass(L, "c2Poly", NULL, NULL, NULL, polyFunctionsList);
 
 	const luaL_Reg rayFunctionsList[] = {
-		{"setStartPosition", raySetStartPosition},
-		{"getStartPosition", rayGetStartPosition},
+		{"setPosition", raySetStartPosition},
+		{"getPosition", rayGetStartPosition},
 		
-		{"setStartX", raySetStartX},
-		{"getStartX", rayGetStartX},
-		{"setStartY", raySetStartY},
-		{"getStartY", rayGetStartY},
+		{"setX", raySetStartX},
+		{"getX", rayGetStartX},
+		{"setY", raySetStartY},
+		{"getY", rayGetStartY},
 		
 		{"setTargetPosition", raySetTargetPosition},
 		{"getTargetPosition", rayGetTargetPosition},
 		
 		{"getTargetX", rayGetTargetX},
 		{"getTargetY", rayGetTargetY},
+		{"setTargetX", raySetTargetX},
+		{"setTargetY", raySetTargetY},
 		
-		{"getLength", rayGetDistance},
-		{"setLength", raySetDistance},
+		{"faceTo", rayFaceTo},
+		{"getFacePosition", rayGetFacePosition},
+		{"getFaceX", rayGetFaceX},
+		{"getFaceY", rayGetFaceY},
+		
+		{"getLength", rayGetLength},
+		{"setLength", raySetLength},
+		
 		{"getDirection", rayGetDirection},
 		{"setDirection", raySetDirection},
+		
 		{"move", rayMove},
 		{"getData", rayGetData},
-		//{"normalizeTargetPosition", rayNormalizeTargetPosition},
+		{"normalize", rayNormalize},
 		{NULL, NULL}
 	};
 	g_createClass(L, "c2Ray", NULL, NULL, NULL, rayFunctionsList);
@@ -2320,6 +2413,7 @@ int loader(lua_State* L)
 		{"capsule", createCapsule},
 		{"poly", createPoly},
 		{"ray", createRay},
+		{"rayFromRotation", createRayFromRotation},
 		{"transform", createTransform}, //c2x
 
 		{"circleToCircle", c2CircletoCircle_lua},

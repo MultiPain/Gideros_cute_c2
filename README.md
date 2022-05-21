@@ -32,6 +32,10 @@ Poly = CuteC2.poly(points)
 -- x2, y2 (numbers): destenation position (gets normalized)
 -- len (number): ray lenght (default: distance between (x1, y1) and (x2, y2))
 Ray = CuteC2.ray(x1, y1, x2, y2 [, len])
+-- x, y (numbers): start position
+-- rotation (number): facing angle (in radians)
+-- len (number): ray lenght (default: 1)
+Ray = CuteC2.rayFromRotation(x, y, rotation [, len])
 
 -- x, y (numbers): position (default: (0, 0))
 -- r (number): rotation (default: 0)
@@ -303,13 +307,78 @@ result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [,
 ```
 
 ## Ray
-```lua
-ray:setStartPosition(x, y)
-x, y = Ray:getStartPosition()
+Please check (this thread)[https://github.com/RandyGaul/cute_headers/issues/30] for more information about ray direction
 
--- x, y (number): destenation point (gets normalized, and changed to a direction vector)
+### Example
+```
+┌───────────────────────────────────┐
+│  0  1  2  3  4  5  6  7  8  9     │
+│  ┌──┬──┬──┬──┬──┬──┬──┬──┬──┬──►  │
+│  │  │  │  │  │  │  │  │  │  │  x  │
+│1 ├──┼──S##┼──┼──┼──┼──┼──┼──┼──   │
+│  │  │  ## ## │  │  │  │  │  │     │
+│2 ├──┼──#─#┼─##──┼──┼──┼──┼──┼───  │
+│  │  │  #  #  │##│  │  │  │  │     │
+│3 ├──┼──#──┼#─┼──##─┼──┼──┼──┼───  │
+│  │  │  #  │ #│  │ ##  │  │  │     │
+│4 ├──┼──#──┼──#──┼──┼##┼──┼──┼───  │
+│  │  │  #  │  │# │  │  ## │  │     │
+│5 ├──┼──#──┼──┼─#┼──┼──┼─#N──┼───  │
+│  │  │  #  │  │  #  │  │  │  │     │
+│6 ├──┼──P──┼──┼──┼#─┼──┼──┼──┼───  │
+│  │  │  │  │  │  │ #│  │  │  │     │
+│7 ├──┼──┼──┼──┼──┼──T──┼──┼──┼───  │
+│  │  │  │  │  │  │  │  │  │  │     │
+│  │                                │
+│  ▼y                               │
+└───────────────────────────────────┘
+S = (2; 1) - origin position
+T = (6; 7) - direction position
+N = (8; 5) - new ray direction
+P = (2; 6) - new ray direction
+```
+
+```lua
+ray = CuteC2.ray(2, 1, 5, 7)
+
+print(ray:getPosition()) --> 2, 1 (point "S")
+print(ray:getTargetPosition()) --> 5, 7 (point "T")
+print(ray:getLength()) --> 6.70
+
+ray:normalize()
+print(ray:getPosition()) --> 2, 1 (point "S")
+print(ray:getTargetPosition()) --> (0.45, 0.89) direction vector
+print(ray:getLength()) --> 1
+
+ray:faceTo(8, 5) -- point "N"
+
+print(ray:getLength()) --> 7.21
+print(ray:getTargetPosition()) --> (0.83, 0.55)
+print(ray:getFacePosition()) --> (8, 5)
+
+ray:setDirection(math.pi - math.pi / 2) -- 90 deg
+ray:setLength(5) -- point "P"
+
+print(ray:getTargetPosition()) --> ~(0, 1)
+print(ray:getFacePosition()) --> ~(2, 6)
+```
+
+### API
+```lua
+ray:setPosition(x, y)
+x, y = Ray:getPosition()
+
+-- x, y (number): destenation point
 ray:setTargetPosition(x, y)
 x, y = Ray:getTargetPosition()
+
+-- x, y (number): destenation point  (target position gets normalized)
+Ray:faceTo(x, y)
+
+-- returns point in global space
+x, y = Ray:getFacePosition()
+x = Ray:getFaceX()
+y = Ray:getFaceY()
 
 Ray:setStartX(x)
 x = Ray:getStartX()
@@ -317,15 +386,24 @@ x = Ray:getStartX()
 Ray:setStartY(y)
 y = Ray:getStartY()
 
+Ray:setTargetX(x)
 x = Ray:getTargetX()
+
+Ray:setTargetY(y)
 y = Ray:getTargetY()
 
 Ray:setLength(len)
 len = Ray:getLength()
 
+-- normalzies the target position 
+-- set_len_to_one (bool) 
+Ray:normalize([set_len_to_one])
+
+-- normalzies the target position 
 Ray:setDirection(radians)
 radians = Ray:getDirection()
 
+-- move original position (but not target!)
 Ray:move(dx, dy)
 startX, startY, directionX, directionY, len = Poly:getData()
 ```
