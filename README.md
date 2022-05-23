@@ -295,6 +295,19 @@ x, y = Poly:getRotatedVertex(index, transform)
 x = Poly:getRotatedVertexX(index, transform)
 y = Poly:getRotatedVertexY(index, transform)
 
+-- return number of vertices
+n = Poly:getVertexCount()
+-- removes 
+Poly:removeVertex(index)
+-- add new vertex
+-- x, y (number): point coordinats (in local space)
+-- index (number): where to insert (default: last index)
+-- transform (Transform): Transform object to add point with respect to shape position and rotation
+Poly:insertVertex(x, y [, index, transform])
+
+-- if vertices is too far from origin, sets the origin in the middle of its bounding box
+Poly:updateCenter()
+
 -- scales object by a factor
 Poly:inflate(skin_factor)
 bool = Poly:hitTest(x, y [, transform])

@@ -106,44 +106,43 @@ C2_TYPE getShapeType(lua_State* L, int idx)
 	return shapeType;
 }
 
+void pushPoint(lua_State* L, float x, float y)
+{
+	lua_createtable(L, 0, 2);
+	
+	lua_pushnumber(L, x);
+	lua_setfield(L, -2, "x");
+	
+	lua_pushnumber(L, y);
+	lua_setfield(L, -2, "y");
+}
+
 int pushManifold(lua_State* L, c2Manifold m)
 {
-	// NEW
 	// {count = value, depth = {value1, value2}, contact_points = {{x = value, y = value}, {x = value, y = value}}, normal = {x = value, y = value}}
-	lua_createtable(L, 0, 4);				// result_t
-	lua_pushnumber(L, m.count);				// result_t, number
-	lua_setfield(L, -2, "count");			// result_t
+	lua_createtable(L, 0, 4);
+	lua_pushnumber(L, m.count);
+	lua_setfield(L, -2, "count");
 	
-	lua_createtable(L, 2, 0);				// result_t, depths_t
-	lua_pushnumber(L, m.depths[0]);			// result_t, depths_t, number
-	lua_rawseti(L, -2, 1);					// result_t, depths_t
-	lua_pushnumber(L, m.depths[1]);			// result_t, depths_t, number
-	lua_rawseti(L, -2, 2);					// result_t, depths_t
-	lua_setfield(L, -2, "depths");			// result_t
+	lua_createtable(L, 2, 0);
+	lua_pushnumber(L, m.depths[0]);
+	lua_rawseti(L, -2, 1);
+	lua_pushnumber(L, m.depths[1]);
+	lua_rawseti(L, -2, 2);
+	lua_setfield(L, -2, "depths");
 	
-	lua_createtable(L, 2, 0);				// result_t, cp_t
+	lua_createtable(L, 2, 0);
 	
-	lua_createtable(L, 0, 2);				// result_t, cp_t, p1_t
-	lua_pushnumber(L, m.contact_points[0].x);// result_t, cp_t, p1_t, number
-	lua_setfield(L, -2, "x");				// result_t, cp_t, p1_t
-	lua_pushnumber(L, m.contact_points[0].y);// result_t, cp_t, p1_t, number
-	lua_setfield(L, -2, "y");				// result_t, cp_t, p1_t
-	lua_rawseti(L, -2, 1);					// result_t, cp_t
+	pushPoint(L, m.contact_points[0].x, m.contact_points[0].y);
+	lua_rawseti(L, -2, 1);
 	
-	lua_createtable(L, 0, 2);				// result_t, cp_t, p2_t
-	lua_pushnumber(L, m.contact_points[1].x);// result_t, cp_t, p2_t, number
-	lua_setfield(L, -2, "x");				// result_t, cp_t, p2_t
-	lua_pushnumber(L, m.contact_points[1].y);// result_t, cp_t, p2_t, number
-	lua_setfield(L, -2, "y");				// result_t, cp_t, p2_t
-	lua_rawseti(L, -2, 2);					// result_t, cp_t
-	lua_setfield(L, -2, "contact_points");	// result_t
+	pushPoint(L, m.contact_points[1].x, m.contact_points[1].y);
+	lua_rawseti(L, -2, 2);
 	
-	lua_createtable(L, 0, 2);				// result_t, norm_t
-	lua_pushnumber(L, m.n.x);				// result_t, norm_t, number
-	lua_setfield(L, -2, "x");				// result_t, norm_t
-	lua_pushnumber(L, m.n.y);				// result_t, norm_t, number
-	lua_setfield(L, -2, "y");				// result_t, norm_t
-	lua_setfield(L, -2, "normal");			// result_t
+	lua_setfield(L, -2, "contact_points");
+	
+	pushPoint(L, m.n.x, m.n.y);
+	lua_setfield(L, -2, "normal");
 	
 	return 1;
 }
@@ -1109,19 +1108,6 @@ void updatePointsInternal(lua_State* L, int idx, c2Poly* poly)
 	c2MakePoly(poly);
 }
 
-void pushPoint(lua_State* L, float x, float y)
-{
-	lua_createtable(L, 0, 2);
-	
-	lua_pushstring(L, "x");
-	lua_pushnumber(L, x);
-	lua_rawset(L, -3);
-	
-	lua_pushstring(L, "y");
-	lua_pushnumber(L, y);
-	lua_rawset(L, -3);
-}
-
 void updateVertexNormal(c2Poly* poly, int idx)
 {
 	int next = (idx + 1) % poly->count;
@@ -1129,10 +1115,10 @@ void updateVertexNormal(c2Poly* poly, int idx)
 	poly->norms[idx] = c2Norm(c2CCW90(e));
 }
 
-int getPointIndex(lua_State* L, int idx)
+C2_INLINE int getPointIndex(lua_State* L, int idx)
 {
 	int index = luaL_checkinteger(L, 2) - 1;
-	index = c2Min(index, C2_MAX_POLYGON_VERTS);
+	index = c2Clamp(index, 0, C2_MAX_POLYGON_VERTS);
 	return index;
 }
 
@@ -1232,7 +1218,7 @@ int polyGetBoundingBox(lua_State* L)
 	c2x transform = checkTransform(L, 2);
 	
 	c2v min = c2V(FLT_MAX, FLT_MAX);
-	c2v max = c2V(0.0f, 0.0f);
+	c2v max = c2V(-FLT_MAX, -FLT_MAX);
 	
 	for (int i = 0; i < poly->count; i++)
 	{
@@ -1430,15 +1416,91 @@ int polyGetRotatedVertexPositionY(lua_State* L)
 	return 1;
 }
 
-int polyUpdateVertexRotation(lua_State* L)
+int polyGetVertexCount(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	lua_pushinteger(L, poly->count);
+	return 1;
+}
+
+int polyUpdateCenter(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	c2x transform = checkTransform(L, 2);
+	
+	c2v min = c2V(FLT_MAX, FLT_MAX);
+	c2v max = c2V(-FLT_MAX, -FLT_MAX);
+	
+	for (int i = 0; i < poly->count; i++)
+	{
+		c2v pt = poly->verts[i];
+		//c2v pr = c2Mulrv(transform.r, pt);
+		min.x = c2Min(min.x, pt.x);
+		min.y = c2Min(min.y, pt.y);
+		max.x = c2Max(max.x, pt.x);
+		max.y = c2Max(max.y, pt.y);
+	}
+	
+	
+	c2v halfSize = c2Mulvs(c2Sub(max, min), 0.5f);	
+	max = c2Add(max, transform.p);
+	min = c2Add(min, transform.p);
+	c2v dst = c2Sub(transform.p, halfSize);
+	c2v offset = c2Sub(dst, min);
+	
+	for (int i = 0; i < poly->count; i++)
+	{
+		poly->verts[i].x += offset.x;
+		poly->verts[i].y += offset.y;
+	}
+	
+	return 0;
+}
+
+int polyRemoveVertex(lua_State* L)
 {
 	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
 	int index = getPointIndex(L, 2);
-	c2x transform = checkTransform(L, 3);
+	poly->count -= 1;
+	LUA_ASSERT(poly->count > 2, "Polygon must have atleast 3 vertices!");
 	
-	c2v pt = c2Mulrv(transform.r, poly->verts[index]);
-	lua_pushnumber(L, pt.y);
-	return 1;
+	for (int i = index; i < poly->count; i++)
+	{
+		poly->verts[i] = poly->verts[i + 1];
+		poly->norms[i] = poly->norms[i + 1];
+	}
+	
+	index -= 1;
+	int prev = index < 0 ? poly->count - 1 : index;
+	updateVertexNormal(poly, prev);
+	
+	return 0;
+}
+
+int polyInsertVertex(lua_State* L)
+{
+	c2Poly* poly = getPtr<c2Poly>(L, "c2Poly", 1);
+	LUA_ASSERTF(poly->count + 1<= C2_MAX_POLYGON_VERTS, "Maximum vertex count limit reached (%d)!", poly->count);
+	c2v point = c2V(luaL_checknumber(L, 2), luaL_checknumber(L, 3));
+	int uind = luaL_optnumber(L, 4, poly->count) - 1;
+	int index = c2Clamp(uind, 0, C2_MAX_POLYGON_VERTS);
+	c2x transform = checkTransform(L, 5);
+		
+	poly->count += 1;
+	
+	for (int i = poly->count - 1;  i > index; i--)
+	{
+		poly->verts[i] = poly->verts[i - 1];
+		poly->norms[i] = poly->norms[i - 1];
+	}
+	
+	index += 1;
+	poly->verts[index] = c2MulrvT(transform.r, point);
+	updateVertexNormal(poly, index);
+	
+	int prev = index - 1 < 0 ? poly->count - 1 : index - 1;
+	updateVertexNormal(poly, prev);
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -1792,7 +1854,7 @@ int rotateTransform(lua_State* L)
 ///
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-int c2CircletoCircle_lua(lua_State* L)
+int c2CircleToCircle_lua(lua_State* L)
 {
 	c2Circle A = *getPtr<c2Circle>(L, "c2Circle", 1);
 	c2Circle B = *getPtr<c2Circle>(L, "c2Circle", 2);
@@ -1802,7 +1864,7 @@ int c2CircletoCircle_lua(lua_State* L)
 	return 1;
 }
 
-int c2CircletoAABB_lua(lua_State* L)
+int c2CircleToAABB_lua(lua_State* L)
 {
 	c2Circle A = *getPtr<c2Circle>(L, "c2Circle", 1);
 	c2AABB B = *getPtr<c2AABB>(L, "c2AABB", 2);
@@ -2349,6 +2411,13 @@ int loader(lua_State* L)
 		{"getRotatedVertex", polyGetRotatedVertexPosition},
 		{"getRotatedVertexX", polyGetRotatedVertexPositionX},
 		{"getRotatedVertexY", polyGetRotatedVertexPositionY},
+		
+		{"getVertexCount", polyGetVertexCount},
+		
+		{"updateCenter", polyUpdateCenter},
+		{"removeVertex", polyRemoveVertex},
+		{"insertVertex", polyInsertVertex},
+		
 		{NULL, NULL}
 	};
 	g_createClass(L, "c2Poly", NULL, NULL, NULL, polyFunctionsList);
@@ -2416,8 +2485,8 @@ int loader(lua_State* L)
 		{"rayFromRotation", createRayFromRotation},
 		{"transform", createTransform}, //c2x
 
-		{"circleToCircle", c2CircletoCircle_lua},
-		{"circleToAABB", c2CircletoAABB_lua},
+		{"circleToCircle", c2CircleToCircle_lua},
+		{"circleToAABB", c2CircleToAABB_lua},
 		{"circleToCapsule", c2CircletoCapsule_lua},
 		{"AABBtoAABB", c2AABBtoAABB_lua},
 		{"AABBtoCapsule", c2AABBtoCapsule_lua},
