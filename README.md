@@ -36,10 +36,6 @@ Ray = CuteC2.ray(x1, y1, x2, y2 [, len])
 -- rotation (number): facing angle (in radians)
 -- len (number): ray lenght (default: 1)
 Ray = CuteC2.rayFromRotation(x, y, rotation [, len])
-
--- x, y (numbers): position (default: (0, 0))
--- r (number): rotation (default: 0)
-Transform = CuteC2.transform([x, y, r])
 ```
 
 ### Functions
@@ -50,19 +46,19 @@ bool = CuteC2.circleToCapsule(circle, capsule)
 bool = CuteC2.AABBtoAABB(aabb1, aabb2)
 bool = CuteC2.AABBtoCapsule(aabb, capsule)
 bool = CuteC2.capsuleToCapsule(capsule1, capsule2)
-bool = CuteC2.circleToPoly(circle, poly [, transform])
-bool = CuteC2.AABBtoPoly(aabb, poly [, transform])
-bool = CuteC2.capsuleToPoly(capsule, poly [, transform])
-bool = CuteC2.polyToPoly(poly1, poly2 [, transform1, transform2])
-bbol = CuteC2.collided(object1, object2 [, transform1, transform2])
+bool = CuteC2.circleToPoly(circle, poly)
+bool = CuteC2.AABBtoPoly(aabb, poly)
+bool = CuteC2.capsuleToPoly(capsule, poly)
+bool = CuteC2.polyToPoly(poly1, poly2)
+bbol = CuteC2.collided(object1, object2)
 
 bool = CuteC2.AABBtoPoint(aabb, x, y)
 bool = CuteC2.circleToPoint(circle, x, y)
 bool = CuteC2.capsuleToPoint(capsule, x, y)
-bool = CuteC2.polyToPoint(poly, x, y [, transform])
+bool = CuteC2.polyToPoint(poly, x, y)
 
-result, normalX, normalY, t = CuteC2.castRay(ray, object [, transform])
-result, normalX, normalY, t = CuteC2.castRay(rayX1, rayY1, rayX2, rayY2, rayLen, object [, transform])
+result, normalX, normalY, t = CuteC2.castRay(ray, object)
+result, normalX, normalY, t = CuteC2.castRay(rayX1, rayY1, rayX2, rayY2, rayLen, object)
 
 -- t (number): value from raycast result
 x, y = CuteC2.impact(ray, t)
@@ -78,7 +74,7 @@ x, y = CuteC2.impact(rayX1, rayY1, rayX2, rayY2, rayLen, t)
 --		}, 
 --		normal = {x = number, y = number}
 -- }
-Mainfold = CuteC2.collide(object1, object2 [, transform1, transform2])
+Mainfold = CuteC2.collide(object1, object2)
 Mainfold = CuteC2.circleToCircleManifold(circle1, circle2)
 Mainfold = CuteC2.circleToAABBManifold(circle, aabb)
 Mainfold = CuteC2.circleToCapsuleManifold(circle, capsule)
@@ -93,16 +89,35 @@ Mainfold = CuteC2.polyToPolyManifold(poly1, poly2)
 ### Advanced functions
 Check the [source code](https://github.com/RandyGaul/cute_headers/blob/df3b63e072afa275a72ce8aa7fce0428a5966e0c/cute_c2.h#L342) for more information
 ```lua
-distance, aX, aY, bX, bY, iterations = CuteC2.GJK(object1, object2 [, transform1, transform2])
+distance, aX, aY, bX, bY, iterations = CuteC2.GJK(object1, object2)
 -- hit (bool): true if shapes were touching at the TOI, false if they never hit.
 -- toi (number): The time of impact between two shapes.
 -- nx, ny (numbers): Surface normal from shape A to B at the time of impact.
 -- px, py (numbers): Point of contact between shapes A and B at time of impact.
 -- iterations (number): Number of iterations the solver underwent.
-hit, toi, nx, ny, px, py, iterations = CuteC2.TOI(object1, v1x, v1y, object2, v2x, v2y [, use_radius, transform1, transform2])
+hit, toi, nx, ny, px, py, iterations = CuteC2.TOI(object1, v1x, v1y, object2, v2x, v2y [, use_radius])
 ```
 
 ## Circle
+Visualization
+
+```lua
+         , - ~ ~ ~ - ,
+     , '       |       ' ,
+   ,           |           ,
+  ,            | Radius     ,
+ ,             |             ,
+ ,             |             ,
+ ,             X             ,
+ ,          position         ,
+ ,                           ,
+  ,                         ,
+   ,                       ,
+     ,                  , '
+       ' - , _ _ _ ,  '
+```
+
+### API
 ```lua
 Circle:setPosition(x, y)
 x, y = Circle:getPosition()
@@ -126,11 +141,27 @@ Circle:inflate(skin_factor)
 
 bool = Circle:hitTest(x, y)
 
-result, normalX, normalY, t = Circle:rayTest(ray [, transform])
-result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+result, normalX, normalY, t = Circle:rayTest(ray)
+result, normalX, normalY, t = Circle:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen)
 ```
 
 ## AABB
+
+Visualization
+```lua
+ min
+  X──────────┬──────────┐
+  │                     │
+  │                     │
+  │                     │
+  ├          ┼          ┤
+  │       position      │
+  │                     │
+  │                     │
+  └──────────┴──────────X
+                       max
+```
+### API
 ```lua
 -- x, y (number): top left corner position
 AABB:setMinPosition(x, y)
@@ -195,11 +226,13 @@ AABB:move(dx, dy)
 AABB:inflate(skin_factor)
 
 bool = AABB:hitTest(x, y)
-result, normalX, normalY, t = AABB:rayTest(ray [, transform])
-result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+result, normalX, normalY, t = AABB:rayTest(ray)
+result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen)
 ```
 
 ## Capsule
+
+Visualization
 ```lua
          , - ~ ~ ~ - ,-------------.-
      , '               ' ,         |
@@ -220,6 +253,7 @@ result, normalX, normalY, t = AABB:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [,
        ' - , _ _ _ ,  '_ _ _ _ _ _ |_
 ```
 
+### API
 ```lua
 -- x, y (number): center position
 Capsule:setPosition(x, y)
@@ -269,31 +303,55 @@ tipX, tipY, baseX, baseY, radius = Capsule:getData()
 Capsule:move(dx, dy)
 Capsule:inflate(skin_factor)
 bool = Capsule:hitTest(x, y)
-result, normalX, normalY, t = Capsule:rayTest(ray [, transform])
-result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+result, normalX, normalY, t = Capsule:rayTest(ray)
+result, normalX, normalY, t = Capsule:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen)
 ```
 
 ## Poly
+Get maximum vertex count
 ```lua
+v = CuteC2.MAX_POLYGON_VERTS
+```
+
+### API
+```lua
+Poly:setPosition(x, y)
+x, y = Poly:getPosition()
+
+Poly:setX(x)
+x = Poly:getX()
+
+Poly:setY(y)
+y = Poly:getY()
+
+Poly:move(deltaX, deltaY)
+
+Poly:setRotation(radians)
+Poly = Poly:getRotation()
+Poly:rotate(amount_in_radians)
+
+-- returns cos & sin of current rotation angle
+cos, sin = Poly:getCosSin()
+
 -- points (table): table of x/y pairs (example: {0,0, 100,50, 60,30, 40,90})
-Poly:setPoints(points)
+Poly:setPoints(points, [inGlobalSpace = false])
 
 -- points (table): table of x/y pairs (example: {{x=0,y=0}, {x=100,y=50}, {x=60,y=30}, {x=40,y=90}})
-Poly:setPointsXY(points)
+Poly:setPointsXY(points, [inGlobalSpace = false])
 
--- returns a table of x/ pairs ({{x=0,y=0,}, {x=10,y=0}, ...})
-table = Poly:getPoints() 
+-- returns a table of x/y pairs ({{x=0,y=0,}, {x=10,y=0}, ...})
+table = Poly:getPoints([inGlobalSpace = false]) 
 table = Poly:getNormals()
-table = Poly:getRotatedPoints(transform)
-table = Poly:getRotatedNormals(transform)
+table = Poly:getRotatedPoints([inGlobalSpace = false])
+table = Poly:getRotatedNormals()
 
-Poly:setVertex(index, x, y)
-x, y = Poly:getVertex(index)
-x = Poly:getVertexX(index)
-y = Poly:getVertexY(index)
-x, y = Poly:getRotatedVertex(index, transform)
-x = Poly:getRotatedVertexX(index, transform)
-y = Poly:getRotatedVertexY(index, transform)
+Poly:setVertex(index, x, y, [inGlobalSpace = false])
+x, y = Poly:getVertex(index, [inGlobalSpace = false])
+x = Poly:getVertexX(index, [inGlobalSpace = false])
+y = Poly:getVertexY(index, [inGlobalSpace = false])
+x, y = Poly:getRotatedVertex(index, [inGlobalSpace = false])
+x = Poly:getRotatedVertexX(index, [inGlobalSpace = false])
+y = Poly:getRotatedVertexY(index, [inGlobalSpace = false])
 
 -- return number of vertices
 n = Poly:getVertexCount()
@@ -302,21 +360,20 @@ Poly:removeVertex(index)
 -- add new vertex
 -- x, y (number): point coordinats (in local space)
 -- index (number): where to insert (default: last index)
--- transform (Transform): Transform object to add point with respect to shape position and rotation
-Poly:insertVertex(x, y [, index, transform])
+Poly:insertVertex(x, y [, inGlobalSpace = false, index])
 
 -- if vertices is too far from origin, sets the origin in the middle of its bounding box
 Poly:updateCenter()
 
 -- scales object by a factor
 Poly:inflate(skin_factor)
-bool = Poly:hitTest(x, y [, transform])
-minX, minY, maxX, maxY = Poly:getBoundingBox()
+bool = Poly:hitTest(x, y)
+minX, minY, maxX, maxY = Poly:getBoundingBox([inGlobalSpace = false])
 -- return a table with points & normals: {points = {...}, normals = {...}}
 table = Poly:getData()
 
-result, normalX, normalY, t = Poly:rayTest(ray [, transform])
-result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen [, transform])
+result, normalX, normalY, t = Poly:rayTest(ray)
+result, normalX, normalY, t = Poly:rayTest(rayX1, rayY1, rayX2, rayY2, rayLen)
 ```
 
 ## Ray
@@ -419,23 +476,6 @@ radians = Ray:getDirection()
 -- move original position (but not target!)
 Ray:move(dx, dy)
 startX, startY, directionX, directionY, len = Poly:getData()
-```
-
-## Transform
-```lua
-Transform:setPosition(x, y)
-x, y = Transform:getPosition()
-Transform:setX(x)
-x = Transform:getX()
-Transform:setY(y)
-y = Transform:getY()
-Transform:move(deltaX, deltaY)
-Transform:setRotation(radians)
-radians = Transform:getRotation()
-Transform:rotate(amount_in_radians)
-Transform:move(dx, dy)
--- returns cos & sin of current rotation angle
-cos, sin = Transform:getCosSin()
 ```
 
 ## Shape types
