@@ -3,8 +3,6 @@ QT -= core ui
 TARGET = CuteC2_beta
 TEMPLATE = lib
 
-#DESTDIR = ../../plugins/
-
 INCLUDEPATH += ../../Sdk/include
 INCLUDEPATH += ../../Sdk/include/gideros
 INCLUDEPATH += ../../Src/2dsg
