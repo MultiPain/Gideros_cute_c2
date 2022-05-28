@@ -1,5 +1,5 @@
 # cute_c2 LUA binding for [Gideros mobile](http://giderosmobile.com/)
-[cute_c2](https://github.com/RandyGaul/cute_headers)
+[cute_c2](https://github.com/RandyGaul/cute_headers)<br/>
 [Demo](https://github.com/MultiPain/CuteC2-DEMO)
 
 # API
